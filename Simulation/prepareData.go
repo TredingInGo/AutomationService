@@ -3,17 +3,23 @@ package Simulation
 import (
 	"database/sql"
 	"fmt"
-	"github.com/TredingInGo/AutomationService/strategy"
-	smartapigo "github.com/TredingInGo/smartapi"
 	"strings"
 	"time"
+
+	"github.com/TredingInGo/AutomationService/strategy"
+	smartapigo "github.com/TredingInGo/smartapi"
 )
 
 var StockUniverse []string
 
 func PrepareData(db *sql.DB, client *smartapigo.Client, token string, timeFrame, symbol string) {
 	symbolToken := token
-	tempTime := time.Now()
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return
+	}
+	tempTime := time.Now().In(location)
 	toDate := tempTime.Format("2006-01-02 15:04")
 	fromDate := tempTime.Add(time.Hour * 24 * -5).Format("2006-01-02 15:04")
 	tempTime = tempTime.Add(time.Hour * 24 * -5)

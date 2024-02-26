@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	smartapigo "github.com/TredingInGo/smartapi"
-	"github.com/TredingInGo/smartapi/models"
 	"io/ioutil"
 	"math"
 	"net/http"
 	"sort"
 	"strconv"
 	"time"
+
+	smartapigo "github.com/TredingInGo/smartapi"
+	"github.com/TredingInGo/smartapi/models"
 )
 
 type params struct {
@@ -103,7 +104,13 @@ func (s strategy) getPrevData(token string) {
 	var max = 3
 
 	for count := 0; count < max; count++ {
-		t := time.Now()
+		location, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			fmt.Println("Error loading location:", err)
+			return
+		}
+		currentTime := time.Now().In(location)
+		t := currentTime
 		t = t.Add(time.Hour * 24 * time.Duration(-count))
 
 		if t.Weekday() == 0 || t.Weekday() == 6 {
@@ -137,7 +144,13 @@ func (s *strategy) fillPastData(symbol string, exhange string, max int) {
 	// add last 10 days data
 
 	for count := 0; count < max; count++ {
-		t := time.Now()
+		location, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			fmt.Println("Error loading location:", err)
+			return
+		}
+		currentTime := time.Now().In(location)
+		t := currentTime
 		t = t.Add(time.Hour * 24 * time.Duration(-count))
 
 		if t.Weekday() == 0 || t.Weekday() == 6 {
@@ -171,7 +184,12 @@ func (s *strategy) makeCandle(ch <-chan *models.SnapQuote, duration int) {
 	for data := range ch {
 		lastCandleFormAt := s.pastData[len(s.pastData)-1].Timestamp
 		nextCandleFormAt := lastCandleFormAt.Add(time.Second * time.Duration(duration))
-		currentTime := time.Now()
+		location, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			fmt.Println("Error loading location:", err)
+			return
+		}
+		currentTime := time.Now().In(location)
 		if currentTime.After(nextCandleFormAt) {
 
 			s.pastData[len(s.pastData)-1].Timestamp = nextCandleFormAt

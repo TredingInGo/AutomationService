@@ -2,10 +2,12 @@ package strategy
 
 import (
 	"database/sql"
-	smartapigo "github.com/TredingInGo/smartapi"
+	"fmt"
 	"log"
 	"math"
 	"time"
+
+	smartapigo "github.com/TredingInGo/smartapi"
 )
 
 func LoadStockList(db *sql.DB) []Symbols {
@@ -69,7 +71,12 @@ func LoadStockListForSwing(db *sql.DB) []Symbols {
 }
 
 func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame string) []smartapigo.CandleResponse {
-	tempTime := time.Now()
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return nil
+	}
+	tempTime := time.Now().In(location)
 	toDate := tempTime.Format("2006-01-02 15:04")
 	fromDate := tempTime.Add(time.Hour * 24 * -5).Format("2006-01-02 15:04")
 	tempTime = tempTime.Add(time.Hour * 24 * -5)
@@ -92,7 +99,12 @@ func GetStockTickForSwing(client *smartapigo.Client, symbolToken string, timeFra
 }
 
 func GetHistoryData(client *smartapigo.Client, symbolToken string, timeFrame string) []smartapigo.CandleResponse {
-	tempTime := time.Now()
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return nil
+	}
+	tempTime := time.Now().In(location)
 	toDate := tempTime.Format("2006-01-02 15:04")
 	fromDate := tempTime.Add(time.Hour * 24 * -50).Format("2006-01-02 15:04")
 	tempTime = tempTime.Add(time.Hour * 24 * -50)
@@ -107,8 +119,21 @@ func GetHistoryData(client *smartapigo.Client, symbolToken string, timeFrame str
 }
 
 func newCandleResponse() smartapigo.CandleResponse {
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return smartapigo.CandleResponse{
+			Timestamp: time.Now(),
+			Open:      0.0,
+			High:      0,
+			Low:       0,
+			Close:     0,
+			Volume:    0,
+		}
+	}
+	tempTime := time.Now().In(location)
 	return smartapigo.CandleResponse{
-		Timestamp: time.Now(),
+		Timestamp: tempTime,
 		Open:      0.0,
 		High:      0.0,
 		Low:       0.0,

@@ -3,9 +3,10 @@ package strategy
 import (
 	"database/sql"
 	"fmt"
-	smartapigo "github.com/TredingInGo/smartapi"
 	"strconv"
 	"time"
+
+	smartapigo "github.com/TredingInGo/smartapi"
 )
 
 type OrderDetails struct {
@@ -23,7 +24,12 @@ type Symbols struct {
 
 func CloseSession(client *smartapigo.Client) {
 
-	currentTime := time.Now()
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+		return
+	}
+	currentTime := time.Now().In(location)
 	compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 0, 0, 0, currentTime.Location())
 	userProfile, _ := client.GetUserProfile()
 	if currentTime.After(compareTime) {
@@ -84,8 +90,13 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 	//isEmaSell := isEmaDownAlligator(data, token, symbol)
 	var order ORDER
 	order.OrderType = "None"
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading location:", err)
+	}
+	currentTime := time.Now().In(location)
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", currentTime, data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].High + 0.05,

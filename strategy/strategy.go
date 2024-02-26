@@ -3,11 +3,12 @@ package strategy
 import (
 	"database/sql"
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/TredingInGo/AutomationService/historyData"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"github.com/TredingInGo/smartapi/models"
-	"math"
-	"time"
 )
 
 type trade struct {
