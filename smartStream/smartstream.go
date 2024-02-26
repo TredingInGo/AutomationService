@@ -1,9 +1,10 @@
 package smartStream
 
 import (
+	"time"
+
 	"github.com/TredingInGo/smartapi/models"
 	"github.com/TredingInGo/smartapi/smartstream"
-	"time"
 )
 
 var (

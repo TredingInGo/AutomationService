@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+var location string
+location, err := time.LoadLocation("America/New_York")
+if err != nil {
+    fmt.Println("Error loading location:", err)
+    return
+}
+currentTime := time.Now().In(location)
+
 type trade struct {
 	spot      float64
 	sl        float64
@@ -35,7 +43,7 @@ type OHLCData struct {
 }
 
 var tempOhlc = CandleResponse{
-	Timestamp: time.Now(),
+	Timestamp: currentTime,
 	Open:      0.0,
 	High:      0.0,
 	Low:       0.0,
@@ -63,7 +71,7 @@ const (
 )
 
 var (
-	currTime = time.Now()
+	currTime = currentTime
 	baseTime = time.Date(currTime.Year(), currTime.Month(), currTime.Day(), 9, 0, 0, 0, time.Local)
 )
 
