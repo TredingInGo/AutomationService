@@ -74,7 +74,7 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 	location, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		fmt.Println("Error loading location:", err)
-		return
+		return nil
 	}
 	tempTime := time.Now().In(location)
 	toDate := tempTime.Format("2006-01-02 15:04")
@@ -102,7 +102,7 @@ func GetHistoryData(client *smartapigo.Client, symbolToken string, timeFrame str
 	location, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		fmt.Println("Error loading location:", err)
-		return
+		return nil
 	}
 	tempTime := time.Now().In(location)
 	toDate := tempTime.Format("2006-01-02 15:04")
@@ -122,7 +122,14 @@ func newCandleResponse() smartapigo.CandleResponse {
 	location, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		fmt.Println("Error loading location:", err)
-		return
+		return smartapigo.CandleResponse{
+			Timestamp: time.Now(),
+			Open:      0.0,
+			High:      0,
+			Low:       0,
+			Close:     0,
+			Volume:    0,
+		}
 	}
 	tempTime := time.Now().In(location)
 	return smartapigo.CandleResponse{

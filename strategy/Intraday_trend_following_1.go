@@ -93,7 +93,6 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 	location, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		fmt.Println("Error loading location:", err)
-		return
 	}
 	currentTime := time.Now().In(location)
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)

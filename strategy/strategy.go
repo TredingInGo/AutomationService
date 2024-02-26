@@ -3,20 +3,13 @@ package strategy
 import (
 	"database/sql"
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/TredingInGo/AutomationService/historyData"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"github.com/TredingInGo/smartapi/models"
-	"math"
-	"time"
 )
-
-var location string
-location, err := time.LoadLocation("America/New_York")
-if err != nil {
-    fmt.Println("Error loading location:", err)
-    return
-}
-currentTime := time.Now().In(location)
 
 type trade struct {
 	spot      float64
@@ -43,7 +36,7 @@ type OHLCData struct {
 }
 
 var tempOhlc = CandleResponse{
-	Timestamp: currentTime,
+	Timestamp: time.Now(),
 	Open:      0.0,
 	High:      0.0,
 	Low:       0.0,
@@ -71,7 +64,7 @@ const (
 )
 
 var (
-	currTime = currentTime
+	currTime = time.Now()
 	baseTime = time.Date(currTime.Year(), currTime.Month(), currTime.Day(), 9, 0, 0, 0, time.Local)
 )
 
