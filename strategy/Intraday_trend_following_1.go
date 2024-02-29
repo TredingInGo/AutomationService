@@ -78,7 +78,7 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 	sma8 := sma[tokenPlusUser+"8"][idx]
 	sma21 := sma[tokenPlusUser+"21"][idx]
 	sma13 := sma[tokenPlusUser+"13"][idx]
-	sma3 := sma[tokenPlusUser+"3"][idx]
+	//sma3 := sma[tokenPlusUser+"3"][idx]
 	adx14 := adx[tokenPlusUser]
 	rsi := rsi[tokenPlusUser]
 	//isEmaBuy := isEmaUpAlligator(data, token, symbol)
@@ -87,7 +87,7 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma3 > sma5 && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
+	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].High + 0.05,
 			Sl:        int(data[idx].High * 0.01),
@@ -96,7 +96,7 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 			OrderType: "BUY",
 		}
 
-	} else if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma3 < sma5 && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] && rsi[idx-1] > rsi[idx] {
+	} else if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] && rsi[idx-1] > rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].Low - 0.05,
 			Sl:        int(data[idx].Low * 0.01),
