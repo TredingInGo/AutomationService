@@ -8,29 +8,56 @@ import (
 	"strconv"
 )
 
-func SwingScreener(client *smartapigo.Client, db *sql.DB) {
-	stockList := LoadStockListForSwing(db)
-	fmt.Printf("*************** LIST FOR SWING TRADING *****************")
-
-	for _, stock := range stockList {
-
-		ExecuteScreener(stock.Token, stock.Symbol, client)
-	}
-	fmt.Printf("Screener Completed")
+type StockResponse struct {
+	StockName string  `json:"stockName"`
+	Token     string  `json:"token"`
+	SpotPrice float64 `json:"spotPrice"`
+	StopLoss  float64 `json:"stopLoss"`
+	Target    float64 `json:"target"`
+	TimeFrame string  `json:"timeFrame"`
 }
 
-func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client) {
+func SwingScreener(client *smartapigo.Client, db *sql.DB) []StockResponse {
+	stockList := LoadStockListForSwing(db)
+	fmt.Printf("*************** LIST FOR SWING TRADING *****************")
+	var swingStocks []StockResponse
+	var timeFrames = []string{"ONE_HOUR", "ONE_DAY"}
+	for _, timeFrame := range timeFrames {
+		for _, stock := range stockList {
 
-	data := GetStockTickForSwing(client, stockToken, "ONE_DAY")
+			swingOrder := ExecuteScreener(stock.Token, stock.Symbol, client, timeFrame)
+			if swingOrder != nil {
+				swingStocks = append(swingStocks, *swingOrder)
+			}
+
+		}
+	}
+	fmt.Printf("Screener Completed")
+	return swingStocks
+}
+
+func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client, timeFrame string) *StockResponse {
+
+	data := GetStockTickForSwing(client, stockToken, timeFrame)
 	//fmt.Printf("\nStock Name: %v, DataSize: %v\n", symbol, len(data))
 	if len(data) <= 30 {
-		return
+		return nil
 	}
 	PopulateIndicators(data, stockToken, "Swing")
 	order := TrendFollowingRsiForSwing(data, stockToken, symbol)
 	if order.OrderType == "None" {
-		return
+		return nil
 	}
+
+	response := StockResponse{
+		StockName: symbol,
+		Token:     stockToken,
+		SpotPrice: order.Spot,
+		StopLoss:  float64(order.Sl),
+		Target:    float64(order.Tp),
+		TimeFrame: timeFrame,
+	}
+
 	orderParams := SetOrderParamsForSwing(order, stockToken, symbol)
 	countStock := 1
 	fmt.Printf("\n                   STOCK No: %v                        \n", countStock)
@@ -42,19 +69,21 @@ func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client) {
 	fmt.Printf("Order Params -      %v\n\n", orderParams)
 	fmt.Printf("\n=========================================================\n\n")
 	countStock++
+
+	return &response
 }
 
 func TrendFollowingRsiForSwing(data []smartapigo.CandleResponse, token, symbol string) ORDER {
 	idx := len(data) - 1
-	sma5 := sma[token+"5"][idx]
-	sma8 := sma[token+"8"][idx]
-	adx14 := adx[token]
-	rsi := rsi[token]
+	sma5 := sma["Swing"+token+"5"][idx]
+	sma8 := sma["Swing"+token+"8"][idx]
+	adx14 := adx["Swing"+token]
+	rsi := rsi["Swing"+token]
 	var order ORDER
 	order.OrderType = "None"
 	swingLow := GetSwingLow(data, 10)
 	var _ = GetAvgVolume(data, 20)
-	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma[token+"13"][idx] && sma[token+"13"][idx] > sma[token+"21"][idx] && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-4] < rsi[idx] && rsi[idx-2] > rsi[idx-4] {
+	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma["Swing"+token+"13"][idx] && sma["Swing"+token+"13"][idx] > sma["Swing"+token+"21"][idx] && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-4] < rsi[idx] && rsi[idx-2] > rsi[idx-4] {
 		order = ORDER{
 			Spot:      data[idx].High + 0.05,
 			Sl:        int(swingLow),
