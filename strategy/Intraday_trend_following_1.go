@@ -52,7 +52,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	data := GetStockTick(client, stockToken, "FIVE_MINUTE")
 	dataToVarify := GetStockTick(client, stockToken, "FIFTEEN_MINUTE")
 
-	if len(data) == 0 {
+	if len(data) == 0 || len(dataToVarify) == 0 {
 		return
 	}
 	PopulateIndicators(data, stockToken, userName)
@@ -93,7 +93,7 @@ func TrendFollowingRsi(data, dataToVarify []smartapigo.CandleResponse, token, sy
 	var order ORDER
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v, 15minuteEma07 = %v, 15minuteEma22 = %v name = %v ", time.Now(), data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], ema[token+"15M"+"7"][idx2], ema[token+"15M"+"22"][idx2], username)
 	if ema[token+"15M"+"7"][idx2] > ema[token+"15M"+"22"][idx2] && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].High + 0.05,
