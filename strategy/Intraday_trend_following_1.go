@@ -50,11 +50,13 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) {
 	data := GetStockTick(client, stockToken, "FIVE_MINUTE")
+	dataToVarify := GetStockTick(client, stockToken, "FIFTEEN_MINUTE")
+
 	if len(data) == 0 {
 		return
 	}
 	PopulateIndicators(data, stockToken, userName)
-	order := TrendFollowingRsi(data, stockToken, symbol, userName, client)
+	order := TrendFollowingRsi(data, dataToVarify, stockToken, symbol, userName, client)
 	if order.OrderType == "None" {
 		return
 	}
@@ -71,8 +73,11 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 
 }
 
-func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username string, client *smartapigo.Client) ORDER {
+func TrendFollowingRsi(data, dataToVarify []smartapigo.CandleResponse, token, symbol, username string, client *smartapigo.Client) ORDER {
 	tokenPlusUser := username + token
+	var closePrice = GetClosePriceArray(dataToVarify)
+	CalculateEma(closePrice, 7, token+"15M"+"7")
+	CalculateEma(closePrice, 22, token+"15M"+"22")
 	idx := len(data) - 1
 	sma5 := sma[tokenPlusUser+"5"][idx]
 	sma8 := sma[tokenPlusUser+"8"][idx]
@@ -87,7 +92,7 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
+	if ema[token+"15M"+"7"][idx] > ema[token+"15M"+"22"][idx] && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].High + 0.05,
 			Sl:        int(data[idx].High * 0.01),
@@ -96,7 +101,7 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 			OrderType: "BUY",
 		}
 
-	} else if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] && rsi[idx-1] > rsi[idx] {
+	} else if ema[token+"15M"+"7"][idx] < ema[token+"15M"+"22"][idx] && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] && rsi[idx-1] > rsi[idx] {
 		order = ORDER{
 			Spot:      data[idx].Low - 0.05,
 			Sl:        int(data[idx].Low * 0.01),
@@ -189,7 +194,7 @@ func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 
 func isEmaUpAlligator(data []smartapigo.CandleResponse, token, symbol string) bool {
 	idx := len(data) - 1
-	if ema[token+"5"][idx] < ema[token+"8"][idx] && ema[token+"8"][idx] < ema[token+"13"][idx] && ema[token+"13"][idx] < ema[token+"21"][idx] {
+	if ema[token+"5"][idx] < ema[token+"21"][idx] {
 		return true
 	}
 	return false
@@ -197,7 +202,7 @@ func isEmaUpAlligator(data []smartapigo.CandleResponse, token, symbol string) bo
 
 func isEmaDownAlligator(data []smartapigo.CandleResponse, token, symbol string) bool {
 	idx := len(data) - 1
-	if ema[token+"5"][idx] > ema[token+"8"][idx] && ema[token+"8"][idx] > ema[token+"13"][idx] && ema[token+"13"][idx] > ema[token+"21"][idx] {
+	if ema[token+"5"][idx] > ema[token+"21"][idx] {
 		return true
 	}
 	return false
