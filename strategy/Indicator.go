@@ -3,6 +3,7 @@ package strategy
 import (
 	smartapigo "github.com/TredingInGo/smartapi"
 	"math"
+	"sync"
 )
 
 type StoField struct {
@@ -21,6 +22,27 @@ type ADX struct {
 	Adx     []float64
 	PlusDi  []float64
 	MinusDi []float64
+}
+
+type SMAData struct {
+	sma map[string][]float64
+	mu  sync.RWMutex
+}
+
+func (s *SMAData) SetSma(token string, data []float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sma[token] = data
+}
+
+func (s *SMAData) GetSma(token string) []float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.sma[token]
+}
+
+var smaData = &SMAData{
+	sma: make(map[string][]float64),
 }
 
 var rsi = make(map[string][]float64)
@@ -48,8 +70,8 @@ func roundTwo(number float64) float64 {
 // multiplier = 2 / (period+1)
 // ema[i] = (closePrice - ema[i-1) * multiplier + ema[i-1];
 
-func CalculateSma(data []float64, period int, stockName string) {
-	smaArray := sma[stockName]
+func CalculateSma(data []float64, period int, stockName string) []float64 {
+	smaArray := smaData.GetSma(stockName)
 	if len(smaArray) == 0 {
 		sum := 0.0
 		for i := 0; i < period-1; i++ {
@@ -63,9 +85,10 @@ func CalculateSma(data []float64, period int, stockName string) {
 			Current := roundTwo(sum / float64(period))
 			smaArray = append(smaArray, Current)
 		}
-		sma[stockName] = smaArray
-		return
+		smaData.SetSma(stockName, smaArray)
+		return smaArray
 	}
+
 	if len(smaArray) < len(data) {
 		sum := 0.0
 		for j := len(smaArray) - period + 1; j <= len(smaArray); j++ {
@@ -77,15 +100,17 @@ func CalculateSma(data []float64, period int, stockName string) {
 			Current := sum / float64(period)
 			smaArray = append(smaArray, roundTwo(Current))
 		}
-		sma[stockName] = smaArray
+		smaData.SetSma(stockName, smaArray)
 	}
 
-}
-func GetSmaArray(token string) []float64 {
-	return sma[token]
+	return smaArray
 }
 
-func CalculateEma(data []float64, period int, stockName string) {
+func GetSmaArray(token string) []float64 {
+	return smaData.GetSma(token)
+}
+
+func CalculateEma(data []float64, period int) []float64 {
 	var emaArray []float64
 	multiplier := 2.0 / float64(period+1)
 	sum := 0.0
@@ -99,25 +124,25 @@ func CalculateEma(data []float64, period int, stockName string) {
 		Current := roundTwo(((data[i] - emaArray[i-1]) * multiplier) + emaArray[i-1])
 		emaArray = append(emaArray, Current)
 	}
-	ema[stockName] = emaArray
-	return
-	ema[stockName] = emaArray
-}
-func GetEma(stockName string, ltp float64, period int) float64 {
-	emaArray := ema[stockName]
-	lastIdx := len(emaArray) - 1
-	multiplier := 2.0 / float64(period+1)
-	Current := ((ltp - emaArray[lastIdx]) * multiplier) + emaArray[lastIdx]
-	return Current
-}
-
-func GetEmaArray(stockName string) []float64 {
-	emaArray := ema[stockName]
 
 	return emaArray
 }
 
-func CalculateRsi(data []float64, period int, stockName string) {
+//func GetEma(stockName string, ltp float64, period int) float64 {
+//	emaArray := ema[stockName]
+//	lastIdx := len(emaArray) - 1
+//	multiplier := 2.0 / float64(period+1)
+//	Current := ((ltp - emaArray[lastIdx]) * multiplier) + emaArray[lastIdx]
+//	return Current
+//}
+//
+//func GetEmaArray(stockName string) []float64 {
+//	emaArray := ema[stockName]
+//
+//	return emaArray
+//}
+
+func CalculateRsi(data []float64, period int) []float64 {
 	var rsiArray []float64
 
 	var changeArray []float64
@@ -140,12 +165,10 @@ func CalculateRsi(data []float64, period int, stockName string) {
 			lossArray = append(lossArray, -1*changeArray[i])
 		}
 	}
-	stock1 := "Gain" + stockName
-	stock2 := "Loss" + stockName
-	CalculateEma(gainArray, period, stock1)
-	CalculateEma(lossArray, period, stock2)
-	avgGainArray := GetEmaArray(stock1)
-	avgLossArray := GetEmaArray(stock2)
+
+	avgGainArray := CalculateEma(gainArray, period)
+	avgLossArray := CalculateEma(lossArray, period)
+
 	for i := 0; i < len(data); i++ {
 		avgGain := avgGainArray[i]
 		avgLoss := avgLossArray[i]
@@ -153,13 +176,13 @@ func CalculateRsi(data []float64, period int, stockName string) {
 		rsiVal := 100 - (100 / (1 + rs))
 		rsiArray = append(rsiArray, roundTwo(rsiVal))
 	}
-	rsi[stockName] = rsiArray
 
+	return rsiArray
 }
 
-func GetRsi(stockName string) []float64 {
-	return rsi[stockName]
-}
+//func GetRsi(stockName string) []float64 {
+//	return rsi[stockName]
+//}
 
 /*
 The Current Period High minus (-) Current Period Low
@@ -169,8 +192,7 @@ true range = max[(high - low), abs(high - previous close), abs (low - previous c
 
 */
 
-func CalculateAtr(data []smartapigo.CandleResponse, period int, stockName string) {
-	atrArray := atr[stockName]
+func CalculateAtr(data []smartapigo.CandleResponse, period int, stockName string) []float64 {
 	var trArray []float64
 	trArray = append(trArray, data[0].High-data[0].Low)
 	for i := 1; i < len(data); i++ {
@@ -178,18 +200,18 @@ func CalculateAtr(data []smartapigo.CandleResponse, period int, stockName string
 			math.Max(math.Abs(roundTwo(data[i].High)-roundTwo(data[i-1].Close)), math.Abs(roundTwo(data[i].Low)-roundTwo(data[i-1].Close))))))
 	}
 	atrStock := "ATR" + stockName
-	CalculateSma(trArray, period, atrStock)
-	atrArray = GetSmaArray(atrStock)
-	atr[stockName] = atrArray
+	atrArray := CalculateSma(trArray, period, atrStock)
+
+	return atrArray
 }
 
-func GetAtrArray(stockName string) []float64 {
-	return atr[stockName]
-}
+//func GetAtrArray(stockName string) []float64 {
+//	return atr[stockName]
+//}
 
 // stochastic indicator.
 
-func CalculateSto(data []smartapigo.CandleResponse, period int, stockName string) {
+func CalculateSto(data []smartapigo.CandleResponse, period int, stockName string) []StoField {
 	k := 1
 	d := 3
 	var kArray []float64
@@ -220,55 +242,41 @@ func CalculateSto(data []smartapigo.CandleResponse, period int, stockName string
 		kArray = append(kArray, roundTwo(100.0*(data[i].Close-low)/(high-low)))
 	}
 
-	stoArray := sto[stockName]
+	var stoArray []StoField
 	tokenK := "STO" + stockName + "K"
 	tokenD := "STO" + stockName + "D"
-	CalculateSma(kArray, k, tokenK)
-	kArray = GetSmaArray(tokenK)
-	CalculateSma(kArray, d, tokenD)
-	dArray := GetSmaArray(tokenD)
-	if len(stoArray) == 0 {
-		for i := 0; i < len(data); i++ {
-			stoArray = append(stoArray, StoField{kArray[i], dArray[i]})
-		}
-	} else if len(stoArray) < len(data) {
-		for i := len(stoArray); i < len(data); i++ {
-			stoArray = append(stoArray, StoField{kArray[i], dArray[i]})
-		}
+	kArray = CalculateSma(kArray, k, tokenK)
+	dArray := CalculateSma(kArray, d, tokenD)
+
+	for i := len(stoArray); i < len(data); i++ {
+		stoArray = append(stoArray, StoField{kArray[i], dArray[i]})
 	}
-	sto[stockName] = stoArray
+
+	return stoArray
 }
 
-func GetStoArray(token string) []StoField {
-	return sto[token]
-}
+//func GetStoArray(token string) []StoField {
+//	return sto[token]
+//}
 
-func CalculateMACD(data []float64, fastPeriod, slowPeriod int, stockName string) {
-	macdArray := macd[stockName]
-	CalculateEma(data, 9, stockName+"SlowPeriod")
-	CalculateEma(data, 26, stockName+"FastPeriod")
-	if len(macdArray) == 0 {
+func CalculateMACD(data []float64, fastPeriod, slowPeriod int) []float64 {
+	var macdArray []float64
+	slowEma := CalculateEma(data, fastPeriod)
+	fastEma := CalculateEma(data, slowPeriod)
 
-		for i := 0; i < fastPeriod; i++ {
-			macdArray = append(macdArray, -1.0)
-		}
-		for i := fastPeriod; i < len(data); i++ {
-			macdArray = append(macdArray, ema[stockName+"FastPeriod"][i]-ema[stockName+"SlowPeriod"][i])
-		}
-		macd[stockName] = macdArray
-		return
+	for i := 0; i < fastPeriod; i++ {
+		macdArray = append(macdArray, -1.0)
 	}
-	if len(macdArray) < len(data) {
-		for i := len(macdArray); i < len(data); i++ {
-			macdArray = append(macdArray, ema[stockName+"FastPeriod"][i]-ema[stockName+"SlowPeriod"][i])
-		}
+	for i := fastPeriod; i < len(data); i++ {
+		macdArray = append(macdArray, fastEma[i]-slowEma[i])
 	}
-	macd[stockName] = macdArray
+
+	return macdArray
 }
 
 func CalculateSignalLine(data []float64, period, fastPeriod, slowPeriod int, stockName string) {
 	signalArray := signal[stockName]
-	CalculateMACD(data, fastPeriod, slowPeriod, stockName)
+	macd := CalculateMACD(data, fastPeriod, slowPeriod)
 	CalculateEma(macd[stockName], 9, stockName+"macd")
 	if len(signalArray) == 0 {
 

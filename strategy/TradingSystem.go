@@ -12,6 +12,9 @@ type ORDER struct {
 	Sl        int
 	Quantity  int
 	OrderType string
+	Score     float64
+	Symbol    string
+	Token     string
 }
 
 //func ReversalSystem1(data []smartapigo.CandleResponse, idx int, token string) ORDER {

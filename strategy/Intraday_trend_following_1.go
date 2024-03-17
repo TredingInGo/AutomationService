@@ -4,8 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"sort"
 	"strconv"
+	"sync"
 	"time"
+)
+
+const (
+	worker = 20
 )
 
 type OrderDetails struct {
@@ -21,6 +27,11 @@ type Symbols struct {
 	Token  string `json:"token"`
 }
 
+type EligibleStockParam struct {
+	Symbols
+	UserName string
+}
+
 func CloseSession(client *smartapigo.Client) {
 
 	currentTime := time.Now()
@@ -33,6 +44,7 @@ func CloseSession(client *smartapigo.Client) {
 	}
 
 }
+
 func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 
 	stockList := LoadStockList(db)
@@ -40,35 +52,105 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 	TrackOrders(client, "DUMMY", userProfile.UserName)
 
 	for {
-		for _, stock := range stockList {
-			CloseSession(client)
-			Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
-		}
+		//for _, stock := range stockList {
+		//	CloseSession(client)
+		//	Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
+		//}
+
+		eligibleStocks := getEligibleStocks(stockList, client, userProfile.UserName)
+		// get most eligible stock for trade
+
+		sort.Slice(eligibleStocks, func(i, j int) bool {
+			return eligibleStocks[i].Score > eligibleStocks[j].Score
+		})
+
+		orderParams := GetOrderParams(eligibleStocks[0])
+		// place order for the most eligible stock
+		PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
+
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) {
+func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName string) []*ORDER {
+	inp := make(chan *EligibleStockParam, 1000)
+	out := make(chan *ORDER, 1000)
+	orders := []*ORDER{}
+
+	wg := sync.WaitGroup{}
+
+	go func() {
+		for i := 0; i < worker; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for param := range inp {
+					order := Execute(param.Symbol, param.Token, client, param.UserName)
+					if order != nil {
+						out <- order
+					}
+				}
+			}()
+		}
+	}()
+
+	go func() {
+		for _, stock := range stocks {
+			inp <- &EligibleStockParam{
+				Symbols:  Symbols{Symbol: stock.Symbol, Token: stock.Token},
+				UserName: userName,
+			}
+		}
+		close(inp)
+	}()
+
+	// close output channel after all the workers are done
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
+	for order := range out {
+		orders = append(orders, order)
+	}
+
+	return orders
+}
+
+type DataWithIndicators struct {
+	Data       []smartapigo.CandleResponse
+	Indicators map[string][]float64
+	StoArray   []StoField
+	Token      string
+	UserName   string
+}
+
+func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) *ORDER {
 	data := GetStockTick(client, stockToken, "FIVE_MINUTE")
 	if len(data) == 0 {
-		return
+		return nil
 	}
-	PopulateIndicators(data, stockToken, userName)
-	order := TrendFollowingRsi(data, stockToken, symbol, userName, client)
-	if order.OrderType == "None" {
-		return
-	}
-	if order.Quantity < 1 {
 
-		return
+	dataWithIndicators := &DataWithIndicators{
+		Data:     data,
+		Token:    stockToken,
+		UserName: userName,
 	}
-	orderParams := SetOrderParams(order, stockToken, symbol)
+
+	PopulateIndicators(dataWithIndicators)
+	order := TrendFollowingRsi(data, stockToken, symbol, userName, client)
+	if order.OrderType == "None" || order.Quantity < 1 {
+		return nil
+	}
+
+	return &order
+}
+
+func PlaceOrder(client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) {
 	fmt.Printf("\norder params: for %v \n%v\n", userName, orderParams)
-	var orderRes smartapigo.OrderResponse
-	orderRes, _ = client.PlaceOrder(orderParams)
+	orderRes, _ := client.PlaceOrder(orderParams)
 	fmt.Printf("order response %v for %v", orderRes, userName)
 	TrackOrders(client, symbol, userName)
-
 }
 
 func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username string, client *smartapigo.Client) ORDER {
@@ -106,15 +188,18 @@ func TrendFollowingRsi(data []smartapigo.CandleResponse, token, symbol, username
 
 	}
 
+	order.Symbol = symbol
+	order.Token = token
+
 	return order
 }
 
-func SetOrderParams(order ORDER, token, symbol string) smartapigo.OrderParams {
+func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 
 	orderParams := smartapigo.OrderParams{
 		Variety:          "ROBO",
-		TradingSymbol:    symbol + "-EQ",
-		SymbolToken:      token,
+		TradingSymbol:    order.Symbol + "-EQ",
+		SymbolToken:      order.Token,
 		TransactionType:  order.OrderType,
 		Exchange:         "NSE",
 		OrderType:        "LIMIT",
@@ -126,6 +211,7 @@ func SetOrderParams(order ORDER, token, symbol string) smartapigo.OrderParams {
 		Quantity:         strconv.Itoa(order.Quantity),
 		TrailingStopLoss: strconv.Itoa(1),
 	}
+
 	return orderParams
 }
 func GetAmount(client *smartapigo.Client) float64 {
