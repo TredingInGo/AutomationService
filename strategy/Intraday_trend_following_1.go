@@ -73,9 +73,11 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 		sort.Slice(eligibleStocks, func(i, j int) bool {
 			return eligibleStocks[i].Score > eligibleStocks[j].Score
 		})
-		for i := 0; i < len(eligibleStocks)-1; i++ {
+
+		for i := 0; i < len(eligibleStocks); i++ {
 			fmt.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
 		}
+
 		if len(eligibleStocks) > 0 {
 			orderParams := GetOrderParams(eligibleStocks[0])
 			PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
@@ -288,9 +290,10 @@ func CaluclateScore(data *DataWithIndicators, order ORDER) float64 {
 }
 
 func calculateDirectionalStrength(data []smartapigo.CandleResponse, orderType string) float64 {
-	if orderType == "None" {
+	if orderType == "None" || len(data) < 10 {
 		return 0.0
 	}
+
 	var count = 0.0
 	if orderType == "BUY" {
 		for i := len(data) - 1; i >= len(data)-10; i-- {
@@ -298,11 +301,14 @@ func calculateDirectionalStrength(data []smartapigo.CandleResponse, orderType st
 				count++
 			}
 		}
-	} else if orderType == "SELL" {
-		for i := len(data) - 1; i >= len(data)-10; i-- {
-			if data[i].Open < data[i].Close {
-				count++
-			}
+
+		return count
+	}
+
+	// for sell type
+	for i := len(data) - 1; i >= len(data)-10; i-- {
+		if data[i].Open < data[i].Close {
+			count++
 		}
 	}
 

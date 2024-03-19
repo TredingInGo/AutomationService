@@ -42,6 +42,7 @@ func GetClosePriceArray(data []smartapigo.CandleResponse) []float64 {
 	}
 	return closePrice
 }
+
 func GetHighPriceArray(data []smartapigo.CandleResponse) []float64 {
 	var highPrice []float64
 	for i := 0; i < len(data); i++ {
@@ -79,9 +80,9 @@ func (s strategy) FilterStocks(exchange string) []string {
 		volumes := GetVolumeArray(candles)
 		last50 := closingPrice[len(closingPrice)-50:]
 		last20Volume := volumes[len(volumes)-20:]
-		CalculateSma(last20Volume, 9, key)
+		CalculateSma(last20Volume, 9)
 		emaArray := CalculateEma(last50, 44)
-		smaArray := GetSmaArray(key)
+		smaArray := CalculateSma(last50, 9)
 		if lastCandle.Low > emaArray[len(emaArray)-1] && lastCandle.High >= 200.00 && lastCandle.High <= 1000.00 {
 			filteredList = append(filteredList, params{
 				key:    key,
@@ -338,7 +339,7 @@ func PopulateIndicators(data *DataWithIndicators) {
 	}
 	for i := 2; i <= 50; i++ {
 		ema := CalculateEma(closePrice, i)
-		sma := CalculateSma(closePrice, i, data.Token)
+		sma := CalculateSma(closePrice, i)
 		rsi := CalculateRsi(closePrice, i)
 		atr := CalculateAtr(data.Data, i, data.Token)
 		sto := CalculateSto(data.Data, i, data.Token)

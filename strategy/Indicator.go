@@ -3,7 +3,6 @@ package strategy
 import (
 	smartapigo "github.com/TredingInGo/smartapi"
 	"math"
-	"sync"
 )
 
 type StoField struct {
@@ -24,90 +23,36 @@ type ADX struct {
 	MinusDi []float64
 }
 
-type SMAData struct {
-	sma map[string][]float64
-	mu  sync.RWMutex
-}
-
-func (s *SMAData) SetSma(token string, data []float64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sma[token] = data
-}
-
-func (s *SMAData) GetSma(token string) []float64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.sma[token]
-}
-
-var smaData = &SMAData{
-	sma: make(map[string][]float64),
-}
-
 var rsi = make(map[string][]float64)
-var atr = make(map[string][]float64)
+
 var sma = make(map[string][]float64)
 var ema = make(map[string][]float64)
 var sto = make(map[string][]StoField)
-var macd = make(map[string][]float64)
-var signal = make(map[string][]float64)
+
 var HeikinAshi = make(map[string][]HaikenOHLC)
 var adx = make(map[string]ADX)
-
-func Init(stockName string) {
-	ema[stockName] = make([]float64, 0)
-	rsi[stockName] = make([]float64, 0)
-	atr[stockName] = make([]float64, 0)
-	sma[stockName] = make([]float64, 0)
-}
 
 func roundTwo(number float64) float64 {
 	return math.Round(number*100) / 100
 }
 
-// calculate ema
-// multiplier = 2 / (period+1)
-// ema[i] = (closePrice - ema[i-1) * multiplier + ema[i-1];
-
-func CalculateSma(data []float64, period int, stockName string) []float64 {
-	smaArray := smaData.GetSma(stockName)
-	if len(smaArray) == 0 {
-		sum := 0.0
-		for i := 0; i < period-1; i++ {
-			smaArray = append(smaArray, -1.0)
-			sum += data[i]
-		}
-		sum += data[period-1]
-		smaArray = append(smaArray, roundTwo(sum/float64(period)))
-		for i := period; i < len(data); i++ {
-			sum += data[i] - data[i-period]
-			Current := roundTwo(sum / float64(period))
-			smaArray = append(smaArray, Current)
-		}
-		smaData.SetSma(stockName, smaArray)
-		return smaArray
+func CalculateSma(data []float64, period int) []float64 {
+	smaArray := make([]float64, 0)
+	sum := 0.0
+	for i := 0; i < period-1; i++ {
+		smaArray = append(smaArray, -1.0)
+		sum += data[i]
 	}
 
-	if len(smaArray) < len(data) {
-		sum := 0.0
-		for j := len(smaArray) - period + 1; j <= len(smaArray); j++ {
-			sum += data[j]
-		}
-		smaArray = append(smaArray, roundTwo(sum/float64(period)))
-		for i := len(smaArray); i < len(data); i++ {
-			sum += data[i] - data[i-period]
-			Current := sum / float64(period)
-			smaArray = append(smaArray, roundTwo(Current))
-		}
-		smaData.SetSma(stockName, smaArray)
+	sum += data[period-1]
+	smaArray = append(smaArray, roundTwo(sum/float64(period)))
+	for i := period; i < len(data); i++ {
+		sum += data[i] - data[i-period]
+		Current := roundTwo(sum / float64(period))
+		smaArray = append(smaArray, Current)
 	}
 
 	return smaArray
-}
-
-func GetSmaArray(token string) []float64 {
-	return smaData.GetSma(token)
 }
 
 func CalculateEma(data []float64, period int) []float64 {
@@ -127,20 +72,6 @@ func CalculateEma(data []float64, period int) []float64 {
 
 	return emaArray
 }
-
-//func GetEma(stockName string, ltp float64, period int) float64 {
-//	emaArray := ema[stockName]
-//	lastIdx := len(emaArray) - 1
-//	multiplier := 2.0 / float64(period+1)
-//	Current := ((ltp - emaArray[lastIdx]) * multiplier) + emaArray[lastIdx]
-//	return Current
-//}
-//
-//func GetEmaArray(stockName string) []float64 {
-//	emaArray := ema[stockName]
-//
-//	return emaArray
-//}
 
 func CalculateRsi(data []float64, period int) []float64 {
 	var rsiArray []float64
@@ -180,10 +111,6 @@ func CalculateRsi(data []float64, period int) []float64 {
 	return rsiArray
 }
 
-//func GetRsi(stockName string) []float64 {
-//	return rsi[stockName]
-//}
-
 /*
 The Current Period High minus (-) Current Period Low
 The Absolute Value (abs) of the Current Period High minus (-) The Previous Period Close
@@ -199,15 +126,11 @@ func CalculateAtr(data []smartapigo.CandleResponse, period int, stockName string
 		trArray = append(trArray, roundTwo(math.Max(roundTwo(data[i].High)-roundTwo(data[i].Low),
 			math.Max(math.Abs(roundTwo(data[i].High)-roundTwo(data[i-1].Close)), math.Abs(roundTwo(data[i].Low)-roundTwo(data[i-1].Close))))))
 	}
-	atrStock := "ATR" + stockName
-	atrArray := CalculateSma(trArray, period, atrStock)
+
+	atrArray := CalculateSma(trArray, period)
 
 	return atrArray
 }
-
-//func GetAtrArray(stockName string) []float64 {
-//	return atr[stockName]
-//}
 
 // stochastic indicator.
 
@@ -243,10 +166,8 @@ func CalculateSto(data []smartapigo.CandleResponse, period int, stockName string
 	}
 
 	var stoArray []StoField
-	tokenK := "STO" + stockName + "K"
-	tokenD := "STO" + stockName + "D"
-	kArray = CalculateSma(kArray, k, tokenK)
-	dArray := CalculateSma(kArray, d, tokenD)
+	kArray = CalculateSma(kArray, k)
+	dArray := CalculateSma(kArray, d)
 
 	for i := len(stoArray); i < len(data); i++ {
 		stoArray = append(stoArray, StoField{kArray[i], dArray[i]})
@@ -254,10 +175,6 @@ func CalculateSto(data []smartapigo.CandleResponse, period int, stockName string
 
 	return stoArray
 }
-
-//func GetStoArray(token string) []StoField {
-//	return sto[token]
-//}
 
 func CalculateMACD(data []float64, fastPeriod, slowPeriod int) []float64 {
 	var macdArray []float64

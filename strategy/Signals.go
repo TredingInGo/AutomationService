@@ -23,9 +23,9 @@ func AlligatorBuy(data []float64, idx int, token string, avgType string) bool {
 		//CalculateEma(data, 13, token+"13")
 		return data[idx] > ema[token+"5"][idx] && ema[token+"5"][idx] > ema[token+"8"][idx] && ema[token+"8"][idx] > ema[token+"13"][idx]
 	} else {
-		CalculateSma(data, 5, token+"5")
-		CalculateSma(data, 8, token+"8")
-		CalculateSma(data, 13, token+"13")
+		CalculateSma(data, 5)
+		CalculateSma(data, 8)
+		CalculateSma(data, 13)
 		return data[idx] > sma[token+"5"][idx] && sma[token+"5"][idx] > sma[token+"8"][idx] && sma[token+"8"][idx] > sma[token+"13"][idx]
 	}
 }
@@ -38,9 +38,9 @@ func AlligatorSell(data []float64, idx int, token string, avgType string) bool {
 		//CalculateEma(data, 13, token+"13")
 		return data[idx] < ema[token+"5"][idx] && ema[token+"5"][idx] < ema[token+"8"][idx] && ema[token+"8"][idx] < ema[token+"13"][idx]
 	} else {
-		CalculateSma(data, 5, token+"5")
-		CalculateSma(data, 8, token+"8")
-		CalculateSma(data, 13, token+"13")
+		CalculateSma(data, 5)
+		CalculateSma(data, 8)
+		CalculateSma(data, 13)
 		return data[idx] < sma[token+"5"][idx] && sma[token+"5"][idx] < sma[token+"8"][idx] && sma[token+"8"][idx] < sma[token+"13"][idx]
 	}
 }
