@@ -327,15 +327,23 @@ func GetNextPrice(stockName string, pastData []smartapigo.CandleResponse) (float
 
 func PopulateIndicators(data *DataWithIndicators) {
 	var closePrice = GetClosePriceArray(data.Data)
-
+	if data.Indicators == nil {
+		data.Indicators = make(map[string][]float64)
+	}
+	if data.StoArray == nil {
+		data.StoArray = make(map[string][]StoField)
+	}
+	if data.Adx == nil {
+		data.Adx = make(map[string]ADX)
+	}
 	for i := 2; i <= 50; i++ {
 		ema := CalculateEma(closePrice, i)
-		sma := CalculateSma(closePrice, 9, data.Token)
-		rsi := CalculateRsi(closePrice, 14)
-		atr := CalculateAtr(data.Data, 14, data.Token)
-		sto := CalculateSto(data.Data, 14, data.Token)
-		macd := CalculateSignalLine(closePrice, 14, 9, 26)
-		adx := CalculateAdx(data.Data, 14)
+		sma := CalculateSma(closePrice, i, data.Token)
+		rsi := CalculateRsi(closePrice, i)
+		atr := CalculateAtr(data.Data, i, data.Token)
+		sto := CalculateSto(data.Data, i, data.Token)
+		macd := CalculateSignalLine(closePrice, i, 9, 26)
+		adx := CalculateAdx(data.Data, i)
 		data.Indicators["ema"+strconv.Itoa(i)] = ema
 		data.Indicators["sma"+strconv.Itoa(i)] = sma
 		data.Indicators["rsi"+strconv.Itoa(i)] = rsi

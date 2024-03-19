@@ -76,11 +76,10 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 		for i := 0; i < len(eligibleStocks)-1; i++ {
 			fmt.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
 		}
-		orderParams := GetOrderParams(eligibleStocks[0])
-		// place order for the most eligible stock
-		PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
-
-		time.Sleep(10 * time.Second)
+		if len(eligibleStocks) > 0 {
+			orderParams := GetOrderParams(eligibleStocks[0])
+			PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
+		}
 	}
 }
 
@@ -97,7 +96,7 @@ func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName str
 			go func() {
 				defer wg.Done()
 				for param := range inp {
-					order := Execute(param.Symbol, param.Token, client, param.UserName)
+					order := Execute(param.Token, param.Symbol, client, param.UserName)
 					if order != nil {
 						out <- order
 					}
@@ -163,7 +162,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	sma8 := data.Indicators["sma"+"8"][idx]
 	sma13 := data.Indicators["sma"+"13"][idx]
 	sma21 := data.Indicators["sma"+"21"][idx]
-	adx14 := data.Adx["adx"+"14"]
+	adx14 := data.Adx["Adx"+"14"]
 	rsi := data.Indicators["rsi"+"14"]
 	var order ORDER
 	order.OrderType = "None"
@@ -311,9 +310,10 @@ func calculateDirectionalStrength(data []smartapigo.CandleResponse, orderType st
 }
 
 func calculateROC(data []smartapigo.CandleResponse, orderType string) float64 {
-	if orderType == "None" {
+	if orderType == "None" || len(data) < 14 {
 		return 0.0
 	}
+
 	currentIdx := len(data) - 1
 	score := 0.0
 	ROC := ((data[currentIdx].Close - data[currentIdx-13].Close) / data[currentIdx-13].Close) * 100
@@ -327,7 +327,7 @@ func calculateROC(data []smartapigo.CandleResponse, orderType string) float64 {
 }
 
 func calculateVolumeSocre(data []smartapigo.CandleResponse, orderType string) float64 {
-	if orderType == "None" {
+	if orderType == "None" || len(data) < 2 {
 		return 0.0
 	}
 	currentIdx := len(data) - 1
