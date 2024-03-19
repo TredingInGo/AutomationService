@@ -274,31 +274,24 @@ func CalculateMACD(data []float64, fastPeriod, slowPeriod int) []float64 {
 	return macdArray
 }
 
-func CalculateSignalLine(data []float64, period, fastPeriod, slowPeriod int, stockName string) {
-	signalArray := signal[stockName]
+func CalculateSignalLine(data []float64, period, fastPeriod, slowPeriod int) []float64 {
+	var signalArray []float64
 	macd := CalculateMACD(data, fastPeriod, slowPeriod)
-	CalculateEma(macd[stockName], 9, stockName+"macd")
-	if len(signalArray) == 0 {
+	macdAvg := CalculateEma(macd, 9)
 
-		for i := 0; i < period+fastPeriod; i++ {
-			signalArray = append(signalArray, -1.0)
-		}
-		for i := period + fastPeriod; i < len(data); i++ {
-			signalArray = append(signalArray, ema[stockName+"macd"][i])
-		}
-		signal[stockName] = signalArray
-		return
+	for i := 0; i < period+fastPeriod; i++ {
+		signalArray = append(signalArray, -1.0)
 	}
-	if len(signalArray) < len(data) {
-		for i := len(signalArray); i < len(data); i++ {
-			signalArray = append(signalArray, ema[stockName+"macd"][i])
-		}
+	for i := period + fastPeriod; i < len(data); i++ {
+		signalArray = append(signalArray, macdAvg[i])
 	}
-	signal[stockName] = signalArray
+
+	return signalArray
 }
-func CalculateHeikinAshi(ohlc_data []smartapigo.CandleResponse, token string) {
 
-	heiken_ashi_data := HeikinAshi[token]
+func CalculateHeikinAshi(ohlc_data []smartapigo.CandleResponse) []HaikenOHLC {
+
+	var heiken_ashi_data []HaikenOHLC
 	if len(heiken_ashi_data) == 0 {
 		heiken_ashi_data = append(heiken_ashi_data, HaikenOHLC{
 			(ohlc_data[0].Open + ohlc_data[0].Close) / 2,
@@ -316,7 +309,7 @@ func CalculateHeikinAshi(ohlc_data []smartapigo.CandleResponse, token string) {
 			Low:   math.Min(ohlc_data[i].Low, math.Max((heiken_ashi_data[i-1].Open+heiken_ashi_data[i-1].Close)/2, (ohlc_data[i].Open+ohlc_data[i].High+ohlc_data[i].Low+ohlc_data[i].Close)/4.0)),
 		})
 	}
-	HeikinAshi[token] = heiken_ashi_data
+	return heiken_ashi_data
 }
 
 func calculateDMandTR(current, prev smartapigo.CandleResponse) (float64, float64, float64) {
@@ -402,11 +395,11 @@ func calculateADXDI(data []smartapigo.CandleResponse, period int) ([]float64, []
 	return adxs, plusDIs, minusDIs // Return the slices of ADX, +DI, -DI values
 }
 
-func CalculateAdx(data []smartapigo.CandleResponse, period int, token string) {
+func CalculateAdx(data []smartapigo.CandleResponse, period int) ADX {
 	Adx, pdi, mdi := calculateADXDI(data, period)
-	adxMap := adx[token]
-	adxMap.Adx = Adx
-	adxMap.PlusDi = pdi
-	adxMap.MinusDi = mdi
-	adx[token] = adxMap
+	var adx ADX
+	adx.Adx = Adx
+	adx.PlusDi = pdi
+	adx.MinusDi = mdi
+	return adx
 }

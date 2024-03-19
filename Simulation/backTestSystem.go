@@ -24,14 +24,14 @@ type bestParams struct {
 var best bestParams
 
 func backTestSystems(data []smartapigo.CandleResponse, token string) {
-	strategy.PopulateIndicators(data, token, "")
+	//strategy.PopulateIndicators(data, token)
 	strategy.SetAmount(100000)
 	values := strategy.HeikinAshi[token][len(strategy.HeikinAshi[token])-50:]
 	fmt.Printf("%v", values)
 	high := strategy.GetHighPriceArray(data)
 	low := strategy.GetLowPriceArray(data)
-	strategy.CalculateEma(high, 44, token+"High44")
-	strategy.CalculateEma(low, 44, token+"Low44")
+	strategy.CalculateEma(high, 44)
+	strategy.CalculateEma(low, 44)
 	maxProfit := initTrade()
 	for sma1 := 3; sma1 < 12; sma1++ {
 		for sma2 := 12; sma2 < 30; sma2++ {

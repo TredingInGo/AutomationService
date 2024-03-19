@@ -80,7 +80,7 @@ func (s strategy) FilterStocks(exchange string) []string {
 		last50 := closingPrice[len(closingPrice)-50:]
 		last20Volume := volumes[len(volumes)-20:]
 		CalculateSma(last20Volume, 9, key)
-		emaArray := CalculateEma(last50, 44, key)
+		emaArray := CalculateEma(last50, 44)
 		smaArray := GetSmaArray(key)
 		if lastCandle.Low > emaArray[len(emaArray)-1] && lastCandle.High >= 200.00 && lastCandle.High <= 1000.00 {
 			filteredList = append(filteredList, params{
@@ -328,21 +328,24 @@ func GetNextPrice(stockName string, pastData []smartapigo.CandleResponse) (float
 func PopulateIndicators(data *DataWithIndicators) {
 	var closePrice = GetClosePriceArray(data.Data)
 
-	ema := CalculateEma(closePrice, 9, data.Token)
-	data.Indicators["ema"] = ema
+	for i := 2; i <= 50; i++ {
+		ema := CalculateEma(closePrice, i)
+		sma := CalculateSma(closePrice, 9, data.Token)
+		rsi := CalculateRsi(closePrice, 14)
+		atr := CalculateAtr(data.Data, 14, data.Token)
+		sto := CalculateSto(data.Data, 14, data.Token)
+		macd := CalculateSignalLine(closePrice, 14, 9, 26)
+		adx := CalculateAdx(data.Data, 14)
+		data.Indicators["ema"+strconv.Itoa(i)] = ema
+		data.Indicators["sma"+strconv.Itoa(i)] = sma
+		data.Indicators["rsi"+strconv.Itoa(i)] = rsi
+		data.Indicators["atr"+strconv.Itoa(i)] = atr
+		data.Indicators["macd"+strconv.Itoa(i)] = macd
+		data.StoArray["Sto"+strconv.Itoa(i)] = sto
+		data.Adx["Adx"+strconv.Itoa(i)] = adx
 
-	CalculateSma(closePrice, 9, userName+token)
-	CalculateRsi(closePrice, 14, userName+token)
-	CalculateAtr(candles, 14, userName+token)
-	CalculateMACD(closePrice, 9, 26, userName+token)
-	CalculateSto(candles, 14, userName+token)
-	CalculateSignalLine(closePrice, 14, 9, 26, userName+token)
-	CalculateHeikinAshi(candles, userName+token)
-	CalculateAdx(candles, 14, userName+token)
-	for i := 3; i <= 30; i++ {
-		CalculateSma(closePrice, i, userName+token+strconv.Itoa(i))
-		CalculateEma(closePrice, i, userName+token+strconv.Itoa(i))
 	}
+
 }
 
 func CalculatePositionSize(buyPrice, sl float64) int {
