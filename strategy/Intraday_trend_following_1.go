@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	worker = 2
-)
-
 type OrderDetails struct {
 	Spot      float64
 	Tp        float64
@@ -65,7 +61,7 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 
 	stockList := LoadStockList(db)
 	userProfile, _ := client.GetUserProfile()
-	//TrackOrders(client, "DUMMY", userProfile.UserName)
+	TrackOrders(client, "DUMMY", userProfile.UserName)
 
 	for {
 		//for _, stock := range stockList {

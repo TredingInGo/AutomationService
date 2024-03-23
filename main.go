@@ -184,33 +184,36 @@ func main() {
 		body, _ := ioutil.ReadAll(request.Body)
 		var param = make(map[string]string)
 		json.Unmarshal(body, &param)
-
 		clientCode := param["clientCode"]
 		if clientCode == "" {
 			writer.Write([]byte("clientCode is required"))
 			writer.WriteHeader(400)
 			return
 		}
-
 		mutex.Lock()
 		userSession, ok := userSessions[clientCode]
 		mutex.Unlock()
-
 		if !ok {
 			writer.Write([]byte("clientCode not found"))
 			writer.WriteHeader(400)
 			return
 		}
-
 		if userSession.session.FeedToken == "" {
 			fmt.Println("feed token not set")
 			return
 		}
-
 		db := Simulation.Connect()
-		// Simulation.CollectData(db, apiClient) //this will populate list of stocks.
-		strategy.SwingScreener(userSession.apiClient, db)
-
+		stockResponses := strategy.SwingScreener(userSession.apiClient, db)
+		jsonResponse, err := json.Marshal(stockResponses)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			writer.Write([]byte("Error marshalling response"))
+			fmt.Println("Error marshalling response:", err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK) // Explicitly setting status to 200 OK
+		writer.Write(jsonResponse)
 	}).Methods(http.MethodPost)
 
 	r.HandleFunc("/renew", func(writer http.ResponseWriter, request *http.Request) {
