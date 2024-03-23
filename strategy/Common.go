@@ -73,6 +73,10 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 	toDate := tempTime.Format("2006-01-02 15:04")
 	fromDate := tempTime.Add(time.Hour * 24 * -20).Format("2006-01-02 15:04")
 	tempTime = tempTime.Add(time.Hour * 24 * -20)
+
+	// set timeout
+	client.SetTimeout(5 * time.Second)
+
 	tempHistoryData, _ := client.GetCandleData(smartapigo.CandleParams{
 		Exchange:    "NSE",
 		SymbolToken: symbolToken,
@@ -80,6 +84,7 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 		FromDate:    fromDate,
 		ToDate:      toDate,
 	})
+
 	return tempHistoryData
 }
 

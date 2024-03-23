@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	worker = 20
+	worker = 2
 )
 
 type OrderDetails struct {
@@ -90,7 +90,7 @@ func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName str
 	out := make(chan *ORDER, 1000)
 	orders := []*ORDER{}
 
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	go func() {
 		for i := 0; i < worker; i++ {
@@ -98,10 +98,13 @@ func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName str
 			go func() {
 				defer wg.Done()
 				for param := range inp {
+					start := time.Now()
 					order := Execute(param.Token, param.Symbol, client, param.UserName)
 					if order != nil {
 						out <- order
 					}
+
+					fmt.Println(time.Since(start))
 				}
 			}()
 		}

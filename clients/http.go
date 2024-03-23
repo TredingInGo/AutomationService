@@ -164,7 +164,7 @@ func (h *httpClient) DoEnvelope(method, url string, params map[string]interface{
 	if resp.StatusCode >= http.StatusBadRequest {
 		var e serviceResponse
 		if err := json.Unmarshal(resp.Body, &e); err != nil {
-			h.hLog.Printf("Error parsing JSON response: %v", err)
+			//h.hLog.Printf("Error parsing JSON response: %v", err)
 			return nil, err
 		}
 
@@ -175,7 +175,7 @@ func (h *httpClient) DoEnvelope(method, url string, params map[string]interface{
 	sr := serviceResponse{}
 
 	if err := json.Unmarshal(resp.Body, &sr); err != nil {
-		h.hLog.Printf("Error parsing JSON response: %v | %s", err, resp.Body)
+		//h.hLog.Printf("Error parsing JSON response: %v | %s", err, resp.Body)
 		return nil, err
 	}
 
