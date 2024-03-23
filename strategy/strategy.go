@@ -90,26 +90,26 @@ var order trade
 func (s *strategy) Algo(token string) {
 	//fmt.Printf("Stock-- %v", GetStockName(token))
 	go s.makeCandle(s.chForCandle, 300)
-	for data := range s.LiveData {
-		if len(s.pastData) == 0 {
-			s.fillPastData(data.TokenInfo.Token, "NSE", 15)
-		}
-
-		s.chForCandle <- data
-
-		// some algo....
-		candles := s.pastData
-		PopulateIndicators(candles, token, "Dummy")
-		fmt.Printf("candels %v data %v\n", candles[len(candles)-1], float64(data.LastTradedPrice)/100.0)
-		atr := GetAtrArray(token)
-		sto := GetStoArray(token)
-		LstmPlusStochStratgy(candles, sto[len(sto)-1].K, sto[len(sto)-1].D, atr[len(atr)-1], token)
-		orderSimulation(float64(data.LastTradedPrice) / 100.0)
-
-		//s.oneRsStrategy(data)
-		//s.Order(data)
-		//fmt.Printf(" LiveData: ", float64(data.LastTradedPrice)/100.0)
-	}
+	//for data := range s.LiveData {
+	//	if len(s.pastData) == 0 {
+	//		s.fillPastData(data.TokenInfo.Token, "NSE", 15)
+	//	}
+	//
+	//	s.chForCandle <- data
+	//
+	//	// some algo....
+	//	candles := s.pastData
+	//	PopulateIndicators(candles, token, "Dummy")
+	//	fmt.Printf("candels %v data %v\n", candles[len(candles)-1], float64(data.LastTradedPrice)/100.0)
+	//	//atr := GetAtrArray(token)
+	//	sto := GetStoArray(token)
+	//	LstmPlusStochStratgy(candles, sto[len(sto)-1].K, sto[len(sto)-1].D, atr[len(atr)-1], token)
+	//	orderSimulation(float64(data.LastTradedPrice) / 100.0)
+	//
+	//	//s.oneRsStrategy(data)
+	//	//s.Order(data)
+	//	//fmt.Printf(" LiveData: ", float64(data.LastTradedPrice)/100.0)
+	//}
 }
 
 func LstmPlusStochStratgy(candles []smartapigo.CandleResponse, k, d float64, atr float64, token string) {

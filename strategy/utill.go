@@ -42,6 +42,7 @@ func GetClosePriceArray(data []smartapigo.CandleResponse) []float64 {
 	}
 	return closePrice
 }
+
 func GetHighPriceArray(data []smartapigo.CandleResponse) []float64 {
 	var highPrice []float64
 	for i := 0; i < len(data); i++ {
@@ -79,10 +80,9 @@ func (s strategy) FilterStocks(exchange string) []string {
 		volumes := GetVolumeArray(candles)
 		last50 := closingPrice[len(closingPrice)-50:]
 		last20Volume := volumes[len(volumes)-20:]
-		CalculateSma(last20Volume, 9, key)
-		CalculateEma(last50, 44, key)
-		emaArray := GetEmaArray(key)
-		smaArray := GetSmaArray(key)
+		CalculateSma(last20Volume, 9)
+		emaArray := CalculateEma(last50, 44)
+		smaArray := CalculateSma(last50, 9)
 		if lastCandle.Low > emaArray[len(emaArray)-1] && lastCandle.High >= 200.00 && lastCandle.High <= 1000.00 {
 			filteredList = append(filteredList, params{
 				key:    key,
@@ -326,21 +326,35 @@ func GetNextPrice(stockName string, pastData []smartapigo.CandleResponse) (float
 	return predictedPrice, nil
 }
 
-func PopulateIndicators(candles []smartapigo.CandleResponse, token, userName string) {
-	var closePrice = GetClosePriceArray(candles)
-	CalculateEma(closePrice, 9, userName+token)
-	CalculateSma(closePrice, 9, userName+token)
-	CalculateRsi(closePrice, 14, userName+token)
-	CalculateAtr(candles, 14, userName+token)
-	CalculateMACD(closePrice, 9, 26, userName+token)
-	CalculateSto(candles, 14, userName+token)
-	CalculateSignalLine(closePrice, 14, 9, 26, userName+token)
-	CalculateHeikinAshi(candles, userName+token)
-	CalculateAdx(candles, 14, userName+token)
-	for i := 3; i <= 30; i++ {
-		CalculateSma(closePrice, i, userName+token+strconv.Itoa(i))
-		CalculateEma(closePrice, i, userName+token+strconv.Itoa(i))
+func PopulateIndicators(data *DataWithIndicators) {
+	var closePrice = GetClosePriceArray(data.Data)
+	if data.Indicators == nil {
+		data.Indicators = make(map[string][]float64)
 	}
+	if data.StoArray == nil {
+		data.StoArray = make(map[string][]StoField)
+	}
+	if data.Adx == nil {
+		data.Adx = make(map[string]ADX)
+	}
+	for i := 2; i <= 50; i++ {
+		ema := CalculateEma(closePrice, i)
+		sma := CalculateSma(closePrice, i)
+		rsi := CalculateRsi(closePrice, i)
+		atr := CalculateAtr(data.Data, i, data.Token)
+		sto := CalculateSto(data.Data, i, data.Token)
+		macd := CalculateSignalLine(closePrice, i, 9, 26)
+		adx := CalculateAdx(data.Data, i)
+		data.Indicators["ema"+strconv.Itoa(i)] = ema
+		data.Indicators["sma"+strconv.Itoa(i)] = sma
+		data.Indicators["rsi"+strconv.Itoa(i)] = rsi
+		data.Indicators["atr"+strconv.Itoa(i)] = atr
+		data.Indicators["macd"+strconv.Itoa(i)] = macd
+		data.StoArray["Sto"+strconv.Itoa(i)] = sto
+		data.Adx["Adx"+strconv.Itoa(i)] = adx
+
+	}
+
 }
 
 func CalculatePositionSize(buyPrice, sl float64) int {

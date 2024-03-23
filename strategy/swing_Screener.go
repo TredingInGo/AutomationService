@@ -43,7 +43,7 @@ func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client, timeF
 	if len(data) <= 30 {
 		return nil
 	}
-	PopulateIndicators(data, stockToken, "Swing")
+	//PopulateIndicators(data, stockToken, "Swing")
 	order := TrendFollowingRsiForSwing(data, stockToken, symbol)
 	if order.OrderType == "None" {
 		return nil

@@ -55,6 +55,7 @@ func sendPing() {
 
 }
 func main() {
+	fmt.Println("Starting the server, time: ", time.Now())
 	mutex := sync.Mutex{}
 
 	defer func() {
