@@ -156,13 +156,19 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	sma8 := data.Indicators["sma"+"8"][idx]
 	sma13 := data.Indicators["sma"+"13"][idx]
 	sma21 := data.Indicators["sma"+"21"][idx]
-	adx14 := data.Adx["Adx"+"14"]
 	rsi := data.Indicators["rsi"+"14"]
+	adx14 := data.Adx["Adx"+"14"]
+	rsiAvg5 := getAvg(rsi, 5)
+	rsiavg8 := getAvg(rsi, 8)
+	adxAvg5 := getAvg(adx14.Adx, 5)
+	adxAvg8 := getAvg(adx14.Adx, 8)
+
+	atr14 := data.Indicators["atr"+"14"][idx]
 	var order ORDER
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
+	if adxAvg5 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 > sma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
 			Sl:        int(data.Data[idx].High * 0.01),
@@ -171,7 +177,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 			OrderType: "BUY",
 		}
 
-	} else if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] && rsi[idx-1] > rsi[idx] {
+	} else if adxAvg5 < adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].Low * 0.01),
@@ -273,10 +279,10 @@ func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 
 func CaluclateScore(data *DataWithIndicators, order ORDER) float64 {
 	score := 0.0
-	score += calculateDirectionalStrength(data.Data, order.OrderType)
-	score += calculateROC(data.Data, order.OrderType)
+	//score += calculateDirectionalStrength(data.Data, order.OrderType)
+	//score += calculateROC(data.Data, order.OrderType)
 	score += calculateVolumeSocre(data.Data, order.OrderType)
-	score += calculateLongerTimePeriodDirectionalScore(data.Data, order.OrderType)
+	//score += calculateLongerTimePeriodDirectionalScore(data.Data, order.OrderType)
 	score += calculateAtrScore(data.Data, order.OrderType)
 	return score
 }
@@ -402,4 +408,15 @@ func calculateAtrScore(data []smartapigo.CandleResponse, orderType string) float
 	} else {
 		return 0
 	}
+}
+
+func getAvg(data []float64, period int) float64 {
+	if len(data) < period {
+		return 0.0
+	}
+	sum := 0.0
+	for i := len(data) - 1; i >= len(data)-period; i-- {
+		sum += data[i]
+	}
+	return sum / float64(period)
 }

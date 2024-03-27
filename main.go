@@ -6,6 +6,7 @@ import (
 	"github.com/TredingInGo/AutomationService/Simulation"
 	"github.com/TredingInGo/AutomationService/historyData"
 	"github.com/TredingInGo/AutomationService/strategy"
+	"github.com/TredingInGo/AutomationService/strategy/BackTest"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -61,7 +62,7 @@ func main() {
 	defer func() {
 		recover()
 	}()
-	go sendPing()
+	//go sendPing()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/session", func(writer http.ResponseWriter, request *http.Request) {
@@ -214,6 +215,41 @@ func main() {
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusOK) // Explicitly setting status to 200 OK
 		writer.Write(jsonResponse)
+	}).Methods(http.MethodPost)
+
+	r.HandleFunc("/backTest", func(writer http.ResponseWriter, request *http.Request) {
+		body, _ := ioutil.ReadAll(request.Body)
+		var param = make(map[string]string)
+		json.Unmarshal(body, &param)
+		clientCode := param["clientCode"]
+		if clientCode == "" {
+			writer.Write([]byte("clientCode is required"))
+			writer.WriteHeader(400)
+			return
+		}
+		mutex.Lock()
+		userSession, ok := userSessions[clientCode]
+		mutex.Unlock()
+		if !ok {
+			writer.Write([]byte("clientCode not found"))
+			writer.WriteHeader(400)
+			return
+		}
+		if userSession.session.FeedToken == "" {
+			fmt.Println("feed token not set")
+			return
+		}
+		db := Simulation.Connect()
+		BackTest.BackTest(userSession.apiClient, db)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			writer.Write([]byte("Error marshalling response"))
+			fmt.Println("Error marshalling response:", err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK) // Explicitly setting status to 200 OK
+
 	}).Methods(http.MethodPost)
 
 	r.HandleFunc("/renew", func(writer http.ResponseWriter, request *http.Request) {
