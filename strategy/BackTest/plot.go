@@ -5,14 +5,16 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 	"log"
+	"math/rand"
+	"strconv"
 )
 
 func plotGraph(amount []float64, trade []int) {
 	// Create a new plot, err is returned if there was an error
 	p := plot.New()
-	p.Title.Text = "My Scatter Plot" // Set the title.
-	p.X.Label.Text = "Trades"        // Label for X axis.
-	p.Y.Label.Text = "Amount"        // Label for Y axis.
+	p.Title.Text = "P/L"      // Set the title.
+	p.X.Label.Text = "Trades" // Label for X axis.
+	p.Y.Label.Text = "Amount" // Label for Y axis.
 
 	// Create some random points to plot.
 
@@ -28,8 +30,9 @@ func plotGraph(amount []float64, trade []int) {
 	}
 	p.Add(s)
 
-	// Save the plot to a PNG file.
-	if err := p.Save(4*vg.Inch, 4*vg.Inch, "scatter.png"); err != nil {
+	randN := rand.Int()
+	fileName := "line" + strconv.Itoa(randN) + ".png"
+	if err := p.Save(6*vg.Inch, 6*vg.Inch, fileName); err != nil {
 		log.Fatalf("could not save plot: %v", err)
 	}
 }

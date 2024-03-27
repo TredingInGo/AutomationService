@@ -162,8 +162,6 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	rsiavg8 := getAvg(rsi, 8)
 	adxAvg5 := getAvg(adx14.Adx, 5)
 	adxAvg8 := getAvg(adx14.Adx, 8)
-
-	atr14 := data.Indicators["atr"+"14"][idx]
 	var order ORDER
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
