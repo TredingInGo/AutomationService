@@ -175,7 +175,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 			OrderType: "BUY",
 		}
 
-	} else if adxAvg5 < adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
+	} else if adxAvg5 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].Low * 0.01),
@@ -272,7 +272,7 @@ func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 	if Amount/buyPrice <= 1 {
 		return 0
 	}
-	return int(Amount/buyPrice) * 5
+	return int(Amount/buyPrice) * 4
 }
 
 func CaluclateScore(data *DataWithIndicators, order ORDER) float64 {
