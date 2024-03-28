@@ -62,7 +62,7 @@ func main() {
 	defer func() {
 		recover()
 	}()
-	//go sendPing()
+	go sendPing()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/session", func(writer http.ResponseWriter, request *http.Request) {
