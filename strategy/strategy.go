@@ -4,62 +4,28 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/TredingInGo/AutomationService/historyData"
+	"github.com/TredingInGo/AutomationService/smartStream"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"github.com/TredingInGo/smartapi/models"
 	"math"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 )
 
-type trade struct {
-	spot      float64
-	sl        float64
-	tp        float64
-	qty       float64
-	orderType string
-	flag      bool
-}
-
-type CandleResponse struct {
-	Timestamp time.Time
-	Open      float64
-	High      float64
-	Low       float64
-	Close     float64
-	Volume    int
-}
-type OHLCData struct {
-	Open  float64
-	High  float64
-	Low   float64
-	Close float64
-}
-
-var tempOhlc = CandleResponse{
-	Timestamp: time.Now(),
-	Open:      0.0,
-	High:      0.0,
-	Low:       0.0,
-	Close:     0.0,
-	Volume:    0,
-}
-
-type kpi struct {
-	trade            int
-	profit           float64
-	loss             float64
-	maxContinousloss float64
-	profitCount      float64
-	lossCount        float64
-}
-
-var Amount float64
-var t trade
-var KPI kpi
-var count float64
-
 const (
-	startTime = "09:15"
-	endTime   = "15:30"
+	startTime      = "09:15"
+	endTime        = "15:30"
+	nifty          = 50
+	bankNifty      = 100
+	niftyToken     = "99926000"
+	bankNiftyToken = "99926009"
+	call           = "CE"
+	put            = "PE"
+	nse            = "NSE"
+	nfo            = "NFO"
 )
 
 var (
@@ -76,118 +42,247 @@ type strategy struct {
 	db          *sql.DB
 }
 
-func New(history historyData.History, db *sql.DB) strategy {
+type legInfo struct {
+	price     float64
+	strike    int
+	orderType string
+	token     string
+	symbol    string
+	quantity  int
+}
+
+type legs struct {
+	leg1 legInfo
+	leg2 legInfo
+	leg3 legInfo
+	leg4 legInfo
+}
+
+type priceInfo struct {
+	price  float64
+	token  string
+	symbol string
+}
+
+func New() strategy {
 	return strategy{
-		history:     history,
+
 		LiveData:    make(chan *models.SnapQuote, 100),
 		chForCandle: make(chan *models.SnapQuote, 100),
-		db:          db,
 	}
 }
 
-var order trade
+func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, client *smartapigo.Client) {
 
-func (s *strategy) Algo(token string) {
-	//fmt.Printf("Stock-- %v", GetStockName(token))
-	go s.makeCandle(s.chForCandle, 300)
-	//for data := range s.LiveData {
-	//	if len(s.pastData) == 0 {
-	//		s.fillPastData(data.TokenInfo.Token, "NSE", 15)
-	//	}
-	//
-	//	s.chForCandle <- data
-	//
-	//	// some algo....
-	//	candles := s.pastData
-	//	PopulateIndicators(candles, token, "Dummy")
-	//	fmt.Printf("candels %v data %v\n", candles[len(candles)-1], float64(data.LastTradedPrice)/100.0)
-	//	//atr := GetAtrArray(token)
-	//	sto := GetStoArray(token)
-	//	LstmPlusStochStratgy(candles, sto[len(sto)-1].K, sto[len(sto)-1].D, atr[len(atr)-1], token)
-	//	orderSimulation(float64(data.LastTradedPrice) / 100.0)
-	//
-	//	//s.oneRsStrategy(data)
-	//	//s.Order(data)
-	//	//fmt.Printf(" LiveData: ", float64(data.LastTradedPrice)/100.0)
-	//}
-}
+	index = strings.ToUpper(index)
+	expiry = strings.ToUpper(expiry)
 
-func LstmPlusStochStratgy(candles []smartapigo.CandleResponse, k, d float64, atr float64, token string) {
-	predictions := GetDirections(candles, token+"-5LSTM")
-	//fmt.Printf("close: %v,  k: %v, d: %v, atr: %v, prediction: %v", candles[len(candles)-1].Close, k, d, atr, predictions[len(predictions)-1])
-	if predictions[len(predictions)-1] > 0.7 && k < 30 && d < 20 && atr > 2.5 {
-		KPI.trade++
-		price := candles[len(candles)-1].Close
-		tp := price + atr
-		sl := price - ((tp - price) / 2.0)
-		quantity := 10.0
-		if order.flag == false {
-			order.spot = price
-			order.tp = tp
-			order.sl = sl
-			order.qty = quantity
-			order.flag = true
-			order.orderType = "BUY"
-		}
-	}
-	if predictions[len(predictions)-1] < 0.3 && k > 85 && d > 80 && atr > 2.5 {
-		KPI.trade++
-		price := candles[len(candles)-1].Close
-		tp := price - atr
-		sl := price + ((price - tp) / 2.0)
-		quantity := 10.0
-		if order.flag == false {
-			order.spot = price
-			order.tp = tp
-			order.sl = sl
-			order.qty = quantity
-			order.flag = true
-			order.orderType = "SELL"
-		}
-	}
-
-}
-func orderSimulation(ltp float64) {
-	if order.flag == false {
+	ATMstrike := getATMStrike(client, index)
+	if ATMstrike == 0 {
 		return
 	}
-	if order.orderType == "BUY" {
-		if ltp >= order.tp {
-			KPI.profit += order.tp - order.spot
-			KPI.profitCount++
-			order.flag = false
-			count = 0.0
-			fmt.Println(KPI)
-			return
-		}
-		if ltp <= order.sl {
-			KPI.loss += order.sl - order.spot
-			KPI.lossCount++
-			order.flag = false
-			count++
-			KPI.maxContinousloss = math.Max(KPI.maxContinousloss, count)
-			fmt.Println(KPI)
-			return
-		}
-	}
-	if order.orderType == "SELL" {
-		if ltp <= order.tp {
-			KPI.profit += order.spot - order.tp
-			KPI.profitCount++
-			order.flag = false
-			count = 0.0
-			fmt.Println(KPI)
-			return
-		}
-		if ltp >= order.sl {
-			KPI.loss += order.spot - order.sl
-			KPI.lossCount++
-			order.flag = false
-			count++
-			KPI.maxContinousloss = math.Max(KPI.maxContinousloss, count)
-			fmt.Println(KPI)
-			return
-		}
+
+	spotDiff := 100
+	limit := 800
+	lotsize := 15
+	if index == "NIFTY" {
+		spotDiff = 50
+		limit = 400
+		lotsize = 50
 	}
 
+	ITM := int(ATMstrike) - limit
+	OTM := int(ATMstrike) + limit
+
+	var tokenMap = make(map[string]string)
+	var priceMap = make(map[string]priceInfo)
+
+	tokenInfo := createTokenMapAndBuildTokenModel(tokenMap, expiry, index, int(ATMstrike))
+	totalToken := len(tokenInfo)
+	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
+	tokenCount := 0
+
+	for data := range s.LiveData {
+		start := time.Now()
+		//fmt.Println("Count: ", tokenCount)
+		tokenCount++
+		priceMap[tokenMap[data.TokenInfo.Token]] = priceInfo{
+			price:  float64(data.LastTradedPrice) / 100.0,
+			token:  data.TokenInfo.Token,
+			symbol: index + expiry + tokenMap[data.TokenInfo.Token],
+		}
+		var leg legs
+		maxPL := -100000000.0
+		if tokenCount%totalToken == 0 {
+			for spot1 := ITM; spot1 <= OTM; spot1 += spotDiff {
+				for spot2 := ITM; spot2 <= OTM; spot2 += spotDiff {
+					if spot1 != spot2 {
+						PLForCurrentPrice := CalculateNetPL(ATMstrike, float64(spot1), float64(spot2), priceMap) * float64(lotsize)
+						if maxPL < PLForCurrentPrice {
+							leg.leg1 = legInfo{
+								price:     priceMap[strconv.Itoa(spot1)+call].price,
+								strike:    spot1,
+								orderType: "BUY",
+								token:     priceMap[strconv.Itoa(spot1)+call].token,
+								symbol:    priceMap[strconv.Itoa(spot1)+call].symbol,
+								quantity:  lotsize,
+							}
+							leg.leg2 = legInfo{
+								price:     priceMap[strconv.Itoa(spot1)+put].price,
+								strike:    spot1,
+								orderType: "SELL",
+								token:     priceMap[strconv.Itoa(spot1)+put].token,
+								symbol:    priceMap[strconv.Itoa(spot1)+put].symbol,
+								quantity:  lotsize,
+							}
+							leg.leg3 = legInfo{
+								price:     priceMap[strconv.Itoa(spot2)+call].price,
+								strike:    spot2,
+								orderType: "SELL",
+								token:     priceMap[strconv.Itoa(spot2)+call].token,
+								symbol:    priceMap[strconv.Itoa(spot2)+call].symbol,
+								quantity:  lotsize,
+							}
+							leg.leg4 = legInfo{
+								price:     priceMap[strconv.Itoa(spot2)+put].price,
+								strike:    spot2,
+								orderType: "BUY",
+								token:     priceMap[strconv.Itoa(spot2)+put].token,
+								symbol:    priceMap[strconv.Itoa(spot2)+put].symbol,
+								quantity:  lotsize,
+							}
+							maxPL = PLForCurrentPrice
+						}
+					}
+				}
+			}
+			fmt.Println("Time to calculate ", time.Since(start))
+			start = time.Now()
+			placeFOOrder(maxPL, leg, client)
+			fmt.Println("Time to place order ", time.Since(start))
+		}
+
+	}
+
+}
+
+func getATMStrike(client *smartapigo.Client, index string) float64 {
+	var candles []smartapigo.CandleResponse
+	if index == "NIFTY" {
+		candles = GetStockTick(client, niftyToken, "ONE_DAY")
+		spot := candles[len(candles)-1].Close
+		mf := int(spot) / int(nifty)
+		return float64(nifty * mf)
+	} else if index == "BANKNIFTY" {
+		candles = GetStockTick(client, bankNiftyToken, "ONE_DAY")
+		spot := candles[len(candles)-1].Close
+		mf := int(spot) / int(bankNifty)
+		return float64(bankNifty * mf)
+	}
+	return 0
+
+}
+
+func createTokenMapAndBuildTokenModel(tokenMap map[string]string, expiry, index string, ATM int) []models.TokenInfo {
+	spotDiff := 100
+	limit := 800
+	if index == "NIFTY" {
+		spotDiff = 50
+		limit = 400
+	}
+
+	ITM := ATM - limit
+	OTM := ATM + limit
+	var tokenInfo []models.TokenInfo
+	for spot := ITM; spot <= OTM; spot += spotDiff {
+		callSymbol := index + expiry + strconv.Itoa(spot) + call
+		callToken := GetFOToken(callSymbol, nfo)
+		putSymbol := index + expiry + strconv.Itoa(spot) + put
+		putToken := GetFOToken(putSymbol, nfo)
+		tokenMap[callToken] = strconv.Itoa(spot) + call
+		tokenMap[putToken] = strconv.Itoa(spot) + put
+		tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, callToken})
+		tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, putToken})
+	}
+	return tokenInfo
+
+}
+
+func printOptionChain(priceMap map[string]float64, index string, ATM int) {
+	clearScreen()
+	spotDiff := 100
+	limit := 800
+	if index == "NIFTY" {
+		spotDiff = 50
+		limit = 400
+	}
+
+	ITM := ATM - limit
+	OTM := ATM + limit
+	for spot := ITM; spot <= OTM; spot += spotDiff {
+		symbol1 := strconv.Itoa(spot) + call
+		symbol2 := strconv.Itoa(spot) + put
+		fmt.Println("===============================================")
+		fmt.Println(" ", priceMap[symbol1], " || ", spot, " || ", priceMap[symbol2])
+		fmt.Println("===============================================")
+	}
+
+}
+
+func clearScreen() {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+}
+
+// assumed strike1 is buy sell and strike2 is sell buy
+
+func CalculateNetPL(ATMStrike, strike1, strike2 float64, priceMap map[string]priceInfo) float64 {
+	stirke1CallIV := math.Max(0, ATMStrike-strike1)
+	strike2CallIV := math.Max(0, ATMStrike-strike2)
+	strike1PutIV := math.Max(0, strike1-ATMStrike)
+	strike2PutIV := math.Max(0, strike2-ATMStrike)
+	strike1CallPL := stirke1CallIV - priceMap[strconv.Itoa(int(strike1))+call].price
+	strike2CallPL := priceMap[strconv.Itoa(int(strike2))+call].price - strike2CallIV
+	strike1PutPL := priceMap[strconv.Itoa(int(strike1))+put].price - strike1PutIV
+	strike2PutPL := strike2PutIV - priceMap[strconv.Itoa(int(strike2))+put].price
+	return strike1CallPL + strike2CallPL + strike1PutPL + strike2PutPL
+
+}
+
+func placeFOOrder(maxPL float64, leg legs, client *smartapigo.Client) {
+	fmt.Println("MaxProfit: ", maxPL)
+	fmt.Println(leg)
+	if maxPL > 500 {
+		//order1 := getFOOrderParams(leg.leg1)
+		//order2 := getFOOrderParams(leg.leg2)
+		//order3 := getFOOrderParams(leg.leg3)
+		//order4 := getFOOrderParams(leg.leg4)
+		//orderRes1, err1 := client.PlaceOrder(order1)
+		//orderRes2, err2 := client.PlaceOrder(order2)
+		//orderRes3, err3 := client.PlaceOrder(order3)
+		//orderRes4, err4 := client.PlaceOrder(order4)
+		//fmt.Println(err1, err2, err3, err4)
+		//fmt.Println("orderID 1: ", orderRes1)
+		//fmt.Println("orderID 2: ", orderRes2)
+		//fmt.Println("orderID 3: ", orderRes3)
+		//fmt.Println("orderID 4: ", orderRes4)
+	}
+
+}
+func getFOOrderParams(order legInfo) smartapigo.OrderParams {
+	orderParams := smartapigo.OrderParams{
+		Variety:         "AMO",
+		TradingSymbol:   order.symbol,
+		SymbolToken:     order.token,
+		TransactionType: order.orderType,
+		Exchange:        nfo,
+		OrderType:       "LIMIT",
+		ProductType:     "CARRYFORWARD",
+		Duration:        "DAY",
+		Price:           strconv.FormatFloat(order.price, 'f', 2, 64),
+		Quantity:        strconv.Itoa(order.quantity),
+	}
+
+	return orderParams
 }

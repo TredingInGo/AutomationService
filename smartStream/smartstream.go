@@ -11,16 +11,20 @@ var (
 	baseTime = time.Date(currTime.Year(), currTime.Month(), currTime.Day(), 9, 0, 0, 0, time.Local)
 )
 
+type SmartStream interface {
+	Connect(ch chan *models.SnapQuote, mode models.SmartStreamSubsMode, tokenInfo []models.TokenInfo)
+}
+
 type ltp struct {
 	client *smartstream.WebSocket
 }
 
-func New(clientCode, feedToken string) ltp {
+func New(clientCode, feedToken string) SmartStream {
 	return ltp{client: smartstream.New(clientCode, feedToken)}
 }
 
-func (l ltp) Connect(ch chan *models.SnapQuote, mode models.SmartStreamSubsMode, exchangeType models.ExchangeType, token string) {
-	l.client.SetOnConnected(onConnected(l.client, mode, exchangeType, token))
+func (l ltp) Connect(ch chan *models.SnapQuote, mode models.SmartStreamSubsMode, tokenInfo []models.TokenInfo) {
+	l.client.SetOnConnected(onConnected(l.client, mode, tokenInfo))
 	l.client.SetOnSnapquote(onLTP(ch))
 	l.client.Connect()
 }

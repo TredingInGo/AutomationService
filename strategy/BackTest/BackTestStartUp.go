@@ -7,6 +7,7 @@ import (
 	smartapigo "github.com/TredingInGo/smartapi"
 	"math"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -37,10 +38,38 @@ var trades []int
 func BackTest(client *smartapigo.Client, db *sql.DB) {
 	stockList := strategy.LoadStockList(db)
 	populateStockData(stockList, client)
-	executeBacktest(client, stockList)
+	//rsi, ema,
+	maxProfit := initTrade()
+	rsiVal := 5
+	ema := false
+	for rsi := 5; rsi <= 20; rsi++ {
+		tradeReport = initTrade()
+		Amount = 100000
+		executeBacktest(client, stockList, rsi, false)
+		fmt.Printf("\n rsi = %v, isEma = false, \n", rsi)
+		printCurrentTradeReport()
+		if tradeReport.profit > maxProfit.profit {
+			maxProfit = tradeReport
+			rsiVal = rsi
+			ema = false
+		}
+		Amount = 100000
+		tradeReport = initTrade()
+		fmt.Printf("\n rsi = %v, isEma = true, \n", rsi)
+		executeBacktest(client, stockList, rsi, true)
+		if tradeReport.profit > maxProfit.profit {
+			maxProfit = tradeReport
+			rsiVal = rsi
+			ema = true
+		}
+		printCurrentTradeReport()
+	}
+
 	fmt.Println("********************|| FINAL TRADE REPORT ||************************")
+	tradeReport = maxProfit
+	fmt.Println("Rsi: ", rsiVal, " isEma ", ema)
 	printCurrentTradeReport()
-	plotGraph(amountChange, trades)
+	//plotGraph(amountChange, trades)
 }
 
 func populateStockData(stockList []strategy.Symbols, client *smartapigo.Client) {
@@ -93,10 +122,10 @@ func populateStockTick(client *smartapigo.Client, symbolToken string, timeFrame 
 	return
 }
 
-func executeBacktest(client *smartapigo.Client, stockList []strategy.Symbols) {
+func executeBacktest(client *smartapigo.Client, stockList []strategy.Symbols, rsiPeriod int, isEma bool) {
 	idx := 100
 	for idx < len(stockData[stockList[0].Symbol]) {
-		eligibleStocks := getEligibleStocks(stockList, client, "BackTest", &idx)
+		eligibleStocks := getEligibleStocks(stockList, client, "BackTest", &idx, rsiPeriod, isEma)
 		sort.Slice(eligibleStocks, func(i, j int) bool {
 			return eligibleStocks[i].Score > eligibleStocks[j].Score
 		})
@@ -105,7 +134,7 @@ func executeBacktest(client *smartapigo.Client, stockList []strategy.Symbols) {
 			continue
 		}
 		PlaceOrder(eligibleStocks[0], eligibleStocks[0].Token, &idx)
-		printCurrentTradeReport()
+		//printCurrentTradeReport()
 		idx++
 	}
 }
@@ -118,7 +147,7 @@ func getStockTick(stockToken string, idx *int) []smartapigo.CandleResponse {
 	return stockData[stockToken][0:*idx]
 }
 
-func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, userName string, idx *int) []*strategy.ORDER {
+func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, userName string, idx *int, rsiPeriod int, isEma bool) []*strategy.ORDER {
 	orders := []*strategy.ORDER{}
 	filteredStocks := []*strategy.ORDER{}
 	//inp := make(chan *strategy.EligibleStockParam, 1000)
@@ -167,7 +196,7 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 			UserName: userName,
 		}
 
-		order := Execute(param.Token, param.Symbol, client, param.UserName, idx)
+		order := Execute(param.Token, param.Symbol, client, param.UserName, idx, rsiPeriod, isEma)
 		if order != nil {
 			filteredStocks = append(filteredStocks, order)
 		}
@@ -177,7 +206,7 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 
 	//start = time.Now()
 	for _, stock := range filteredStocks {
-		order := Execute(stock.Symbol, stock.Token, client, userName, idx)
+		order := Execute(stock.Symbol, stock.Token, client, userName, idx, rsiPeriod, isEma)
 		if order != nil {
 			orders = append(orders, order)
 		}
@@ -188,12 +217,12 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 	return orders
 }
 
-func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int) *strategy.ORDER {
+func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int, rsiPeriod int, isEma bool) *strategy.ORDER {
 	if len(dataWithIndicatorsMap[stockToken].Data) == 0 || len(dataWithIndicatorsMap[stockToken].Data) <= *idx {
 		return nil
 	}
 
-	order := TrendFollowingRsi(dataWithIndicatorsMap[stockToken], stockToken, symbol, userName, client, *idx)
+	order := TrendFollowingRsi(dataWithIndicatorsMap[stockToken], stockToken, symbol, userName, client, *idx, rsiPeriod, isEma)
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
@@ -237,38 +266,52 @@ func PlaceOrder(order *strategy.ORDER, symbol string, idx *int) {
 
 }
 
-func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username string, client *smartapigo.Client, idx int) strategy.ORDER {
-	sma5 := data.Indicators["sma"+"5"][idx]
-	sma8 := data.Indicators["sma"+"8"][idx]
-	sma13 := data.Indicators["sma"+"13"][idx]
-	sma21 := data.Indicators["sma"+"21"][idx]
-	adx20 := data.Adx["Adx"+"20"]
-	rsi := data.Indicators["rsi"+"14"]
+func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username string, client *smartapigo.Client, idx int, rsiPeriod int, isEma bool) strategy.ORDER {
+	var ma5, ma8, ma13, ma21, ma3 float64
+	if isEma {
+		ma5 = data.Indicators["ema"+"5"][idx]
+		ma8 = data.Indicators["ema"+"8"][idx]
+		ma13 = data.Indicators["ema"+"13"][idx]
+		ma21 = data.Indicators["ema"+"21"][idx]
+		ma3 = data.Indicators["ema"+"3"][idx]
+	} else {
+		ma5 = data.Indicators["sma"+"5"][idx]
+		ma8 = data.Indicators["sma"+"8"][idx]
+		ma13 = data.Indicators["sma"+"13"][idx]
+		ma21 = data.Indicators["sma"+"21"][idx]
+		ma3 = data.Indicators["sma"+"3"][idx]
+	}
+
+	adx20 := data.Adx["Adx"+"14"]
+	rsi := data.Indicators["rsi"+strconv.Itoa(rsiPeriod)]
 	var order strategy.ORDER
 	order.OrderType = "None"
 	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	rsiAvg5 := getAvg(rsi, 5)
-	rsiavg8 := getAvg(rsi, 8)
+	rsiAvg5 := getAvg(rsi, 3)
+	rsiavg8 := getAvg(rsi, 5)
 	adxAvg5 := getAvg(adx20.Adx, 5)
 	adxAvg8 := getAvg(adx20.Adx, 8)
-	atr14 := data.Indicators["atr"+"14"][idx]
+	//atr14 := data.Indicators["atr"+"14"][idx]
 	var tempOrder strategy.ORDER
 	tempOrder.OrderType = "BUY"
+
+	high, low := GetDC(data.Data, idx-1)
+
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 > sma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 && atr14 > data.Data[idx].High*0.02 {
+	if data.Data[idx].High > high && data.Data[idx-1].Low < high && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && ma3 > ma5 && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].High + 0.05,
-			Sl:        max(1, int(data.Data[idx].High*0.01)),
+			Sl:        int(data.Data[idx].High * 0.02),
 			Tp:        int(data.Data[idx].High * 0.02),
 			Quantity:  calculatePosition(data.Data[idx].High),
 			OrderType: "BUY",
 		}
 
-	} else if adxAvg5 < adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma13 < sma21 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 && atr14 > data.Data[idx].High*0.02 {
+	} else if data.Data[idx].Low < low && data.Data[idx-1].High > low && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
-			Sl:        max(1, int(data.Data[idx].Low*0.01)),
-			Tp:        int(data.Data[idx].Low * 0.02),
+			Sl:        int(data.Data[idx].High * 0.02),
+			Tp:        int(data.Data[idx].High * 0.02),
 			Quantity:  calculatePosition(data.Data[idx].High),
 			OrderType: "SELL",
 		}
@@ -372,4 +415,13 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func GetDC(data []smartapigo.CandleResponse, idx int) (float64, float64) {
+	high, low := 0.0, 100000000.0
+	for i := idx; i > idx-20; i-- {
+		high = math.Max(high, data[i].High)
+		low = math.Min(low, data[i].Low)
+	}
+	return high, low
 }

@@ -37,6 +37,15 @@ func tokenLookup(ticker string, exchange string) string {
 	}
 	return "" // Return -1 if no matching token is found
 }
+func GetFOToken(ticker string, exchange string) string {
+	for _, instrument := range InstrumentLists {
+		if instrument.Symbol == ticker && instrument.ExchSeg == exchange {
+			return instrument.Token
+		}
+	}
+	return ""
+}
+
 func GetStockName(token string) string {
 	for _, instrument := range InstrumentLists {
 		if instrument.Token == token {

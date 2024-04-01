@@ -60,9 +60,9 @@ var trades []tradeRecord
 var trade []tradeReport
 
 func DoBackTest(db *sql.DB) {
-	data := GetData(db, "13061")
-	dataToTest := getDataiInCandleResponseFormate(data)
-	backTestSystems(dataToTest, "13061")
+	//data := GetData(db, "13061")
+	//dataToTest := getDataiInCandleResponseFormate(data)
+	////backTestSystems(dataToTest, "13061")
 	//RunStrategyRSI(dataToTest[len(dataToTest)-7500:])
 	//RunStrategy(dataToTest)
 

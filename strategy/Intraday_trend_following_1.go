@@ -12,8 +12,8 @@ import (
 
 type OrderDetails struct {
 	Spot      float64
-	Tp        float64
-	Sl        float64
+	Tp        int
+	Sl        int
 	Quantity  int
 	OrderType string
 }
@@ -35,6 +35,17 @@ type DataWithIndicators struct {
 	Adx        map[string]ADX
 	Token      string
 	UserName   string
+}
+
+type ORDER struct {
+	Spot      float64
+	Sl        int
+	Tp        int
+	Quantity  int
+	OrderType string
+	Symbol    string
+	Token     string
+	Score     float64
 }
 
 func CloseSession(client *smartapigo.Client) bool {
@@ -158,15 +169,15 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	sma21 := data.Indicators["sma"+"21"][idx]
 	rsi := data.Indicators["rsi"+"14"]
 	adx14 := data.Adx["Adx"+"14"]
-	rsiAvg5 := getAvg(rsi, 5)
+	rsiAvg3 := getAvg(rsi, 3)
 	rsiavg8 := getAvg(rsi, 8)
-	adxAvg5 := getAvg(adx14.Adx, 5)
+	adxAvg3 := getAvg(adx14.Adx, 5)
 	adxAvg8 := getAvg(adx14.Adx, 8)
 	var order ORDER
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adxAvg5 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 > sma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
+	if adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
 			Sl:        int(data.Data[idx].High * 0.01),
@@ -175,7 +186,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 			OrderType: "BUY",
 		}
 
-	} else if adxAvg5 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
+	} else if adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].Low * 0.01),
@@ -278,10 +289,10 @@ func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 func CaluclateScore(data *DataWithIndicators, order ORDER) float64 {
 	score := 0.0
 	//score += calculateDirectionalStrength(data.Data, order.OrderType)
-	//score += calculateROC(data.Data, order.OrderType)
+	score += calculateROC(data.Data, order.OrderType)
 	score += calculateVolumeSocre(data.Data, order.OrderType)
 	//score += calculateLongerTimePeriodDirectionalScore(data.Data, order.OrderType)
-	score += calculateAtrScore(data.Data, order.OrderType)
+	score += calculateAtrScore(data.Data, order)
 	return score
 }
 
@@ -318,11 +329,11 @@ func calculateROC(data []smartapigo.CandleResponse, orderType string) float64 {
 
 	currentIdx := len(data) - 1
 	score := 0.0
-	ROC := ((data[currentIdx].Close - data[currentIdx-13].Close) / data[currentIdx-13].Close) * 100
+	ROC := ((data[currentIdx].Close - data[currentIdx-5].Close) / data[currentIdx-5].Close) * 100
 	if orderType == "BUY" {
 		score = math.Max(0, ROC*2.0)
 	}
-	if order.orderType == "SELL" {
+	if orderType == "SELL" {
 		score = math.Max(0, math.Abs(ROC*2.0))
 	}
 	return score
@@ -392,8 +403,8 @@ func calculateLongerTimePeriodDirectionalScore(data []smartapigo.CandleResponse,
 	return score
 }
 
-func calculateAtrScore(data []smartapigo.CandleResponse, orderType string) float64 {
-	if orderType == "None" {
+func calculateAtrScore(data []smartapigo.CandleResponse, order ORDER) float64 {
+	if order.OrderType == "None" {
 		return 0
 	}
 	currentIdx := len(data) - 1
@@ -401,7 +412,7 @@ func calculateAtrScore(data []smartapigo.CandleResponse, orderType string) float
 	if len(atr) < 14 {
 		return 0
 	}
-	if atr[currentIdx] >= order.tp {
+	if atr[currentIdx] >= float64(order.Tp) {
 		return 12
 	} else {
 		return 0

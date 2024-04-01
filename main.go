@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/TredingInGo/AutomationService/Simulation"
 	"github.com/TredingInGo/AutomationService/historyData"
+	"github.com/TredingInGo/AutomationService/smartStream"
 	"github.com/TredingInGo/AutomationService/strategy"
 	"github.com/TredingInGo/AutomationService/strategy/BackTest"
+	"github.com/TredingInGo/AutomationService/totp"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -63,6 +65,7 @@ func main() {
 		recover()
 	}()
 	go sendPing()
+	strategy.PopuletInstrumentsList()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/session", func(writer http.ResponseWriter, request *http.Request) {
@@ -80,7 +83,7 @@ func main() {
 			return
 		}
 		apiClient := smartapi.New(m["clientCode"], m["password"], m["marketKey"])
-		session, err := apiClient.GenerateSession(m["totp"])
+		session, err := apiClient.GenerateSession(totp.GetTOPT())
 		if err != nil {
 			errorMessage := fmt.Sprintf("Error generating session: %s", err.Error())
 			http.Error(writer, errorMessage, http.StatusInternalServerError)
@@ -320,6 +323,40 @@ func main() {
 
 		fmt.Println("Placed Order ID and Script :- ", order)
 	})
+
+	r.HandleFunc("/option", func(writer http.ResponseWriter, request *http.Request) {
+		body, _ := ioutil.ReadAll(request.Body)
+		var param = make(map[string]string)
+		json.Unmarshal(body, &param)
+
+		clientCode := param["clientCode"]
+		if clientCode == "" {
+			writer.Write([]byte("clientCode is required"))
+			writer.WriteHeader(400)
+			return
+		}
+
+		mutex.Lock()
+		userSession, ok := userSessions[clientCode]
+		mutex.Unlock()
+
+		if !ok {
+			writer.Write([]byte("clientCode not found"))
+			writer.WriteHeader(400)
+			return
+		}
+
+		if userSession.session.FeedToken == "" {
+			fmt.Println("feed token not set")
+			return
+		}
+
+		ltp := smartStream.New(clientCode, userSession.session.FeedToken)
+		strategy := strategy.New()
+
+		strategy.Algo(ltp, param["expiry"], param["index"], userSession.apiClient)
+
+	}).Methods(http.MethodPost)
 
 	port := os.Getenv("HTTP_PLATFORM_PORT")
 

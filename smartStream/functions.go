@@ -77,10 +77,10 @@ func MakeCandle(ch <-chan *models.LTPInfo, duration int) {
 	}
 }
 
-func onConnected(client *smartstream.WebSocket, mode models.SmartStreamSubsMode, exchangeType models.ExchangeType, token string) func() {
+func onConnected(client *smartstream.WebSocket, mode models.SmartStreamSubsMode, tokenInfo []models.TokenInfo) func() {
 	return func() {
 		log.Printf("connected")
-		err := client.Subscribe(mode, []models.TokenInfo{{ExchangeType: exchangeType, Token: token}})
+		err := client.Subscribe(mode, tokenInfo)
 		if err != nil {
 			log.Printf("error while subscribing")
 		}

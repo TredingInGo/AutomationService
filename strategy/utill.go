@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
-	"github.com/TredingInGo/smartapi/models"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -167,60 +165,60 @@ func (s *strategy) fillPastData(symbol string, exhange string, max int) {
 	}
 }
 
-func (s *strategy) makeCandle(ch <-chan *models.SnapQuote, duration int) {
-	for data := range ch {
-		lastCandleFormAt := s.pastData[len(s.pastData)-1].Timestamp
-		nextCandleFormAt := lastCandleFormAt.Add(time.Second * time.Duration(duration))
-		currentTime := time.Now()
-		if currentTime.After(nextCandleFormAt) {
-
-			s.pastData[len(s.pastData)-1].Timestamp = nextCandleFormAt
-			tempOhlc = CandleResponse{
-				Timestamp: nextCandleFormAt,
-				Open:      float64(data.LastTradedPrice) / 100,
-				High:      float64(data.LastTradedPrice) / 100,
-				Low:       float64(data.LastTradedPrice) / 100,
-				Close:     float64(data.LastTradedPrice) / 100,
-				Volume:    0,
-			}
-			s.pastData = append(s.pastData, smartapigo.CandleResponse{
-				Timestamp: tempOhlc.Timestamp,
-				Open:      tempOhlc.Open,
-				High:      tempOhlc.High,
-				Low:       tempOhlc.Low,
-				Close:     tempOhlc.Close,
-				Volume:    0,
-			})
-		} else {
-			if tempOhlc.Open == 0.0 {
-
-				tempOhlc = CandleResponse{
-					Timestamp: lastCandleFormAt,
-					Open:      float64(data.LastTradedPrice) / 100,
-					High:      float64(data.LastTradedPrice) / 100,
-					Low:       float64(data.LastTradedPrice) / 100,
-					Close:     float64(data.LastTradedPrice) / 100,
-					Volume:    0,
-				}
-				s.pastData = append(s.pastData, smartapigo.CandleResponse{
-					Timestamp: tempOhlc.Timestamp,
-					Open:      tempOhlc.Open,
-					High:      tempOhlc.High,
-					Low:       tempOhlc.Low,
-					Close:     tempOhlc.Close,
-					Volume:    0,
-				})
-			} else {
-				tempOhlc.Close = float64(data.LastTradedPrice) / 100
-				s.pastData[len(s.pastData)-1].Close = tempOhlc.Close
-				s.pastData[len(s.pastData)-1].High = math.Max(s.pastData[len(s.pastData)-1].High, tempOhlc.Close)
-				s.pastData[len(s.pastData)-1].Low = math.Min(s.pastData[len(s.pastData)-1].Low, tempOhlc.Close)
-			}
-
-		}
-	}
-
-}
+//func (s *strategy) makeCandle(ch <-chan *models.SnapQuote, duration int) {
+//	for data := range ch {
+//		lastCandleFormAt := s.pastData[len(s.pastData)-1].Timestamp
+//		nextCandleFormAt := lastCandleFormAt.Add(time.Second * time.Duration(duration))
+//		currentTime := time.Now()
+//		if currentTime.After(nextCandleFormAt) {
+//
+//			s.pastData[len(s.pastData)-1].Timestamp = nextCandleFormAt
+//			tempOhlc = CandleResponse{
+//				Timestamp: nextCandleFormAt,
+//				Open:      float64(data.LastTradedPrice) / 100,
+//				High:      float64(data.LastTradedPrice) / 100,
+//				Low:       float64(data.LastTradedPrice) / 100,
+//				Close:     float64(data.LastTradedPrice) / 100,
+//				Volume:    0,
+//			}
+//			s.pastData = append(s.pastData, smartapigo.CandleResponse{
+//				Timestamp: tempOhlc.Timestamp,
+//				Open:      tempOhlc.Open,
+//				High:      tempOhlc.High,
+//				Low:       tempOhlc.Low,
+//				Close:     tempOhlc.Close,
+//				Volume:    0,
+//			})
+//		} else {
+//			if tempOhlc.Open == 0.0 {
+//
+//				tempOhlc = CandleResponse{
+//					Timestamp: lastCandleFormAt,
+//					Open:      float64(data.LastTradedPrice) / 100,
+//					High:      float64(data.LastTradedPrice) / 100,
+//					Low:       float64(data.LastTradedPrice) / 100,
+//					Close:     float64(data.LastTradedPrice) / 100,
+//					Volume:    0,
+//				}
+//				s.pastData = append(s.pastData, smartapigo.CandleResponse{
+//					Timestamp: tempOhlc.Timestamp,
+//					Open:      tempOhlc.Open,
+//					High:      tempOhlc.High,
+//					Low:       tempOhlc.Low,
+//					Close:     tempOhlc.Close,
+//					Volume:    0,
+//				})
+//			} else {
+//				tempOhlc.Close = float64(data.LastTradedPrice) / 100
+//				s.pastData[len(s.pastData)-1].Close = tempOhlc.Close
+//				s.pastData[len(s.pastData)-1].High = math.Max(s.pastData[len(s.pastData)-1].High, tempOhlc.Close)
+//				s.pastData[len(s.pastData)-1].Low = math.Min(s.pastData[len(s.pastData)-1].Low, tempOhlc.Close)
+//			}
+//
+//		}
+//	}
+//
+//}
 
 func trainModel(pastData []smartapigo.CandleResponse, token string) {
 	ohlcData := make([][]float64, 0)
@@ -357,16 +355,16 @@ func PopulateIndicators(data *DataWithIndicators) {
 
 }
 
-func CalculatePositionSize(buyPrice, sl float64) int {
-	if Amount/buyPrice <= 1 {
-		return 0
-	}
-	maxRiskPercent := 0.05 // 2% maximum risk allowed
-	maxRiskAmount := Amount * maxRiskPercent
-	riskPerShare := math.Max(1, math.Abs(buyPrice-sl))
-	positionSize := maxRiskAmount / riskPerShare
-	return int(math.Min(Amount/buyPrice, positionSize))
-}
-func SetAmount(amount float64) {
-	Amount = amount
-}
+//func CalculatePositionSize(buyPrice, sl float64) int {
+//	if Amount/buyPrice <= 1 {
+//		return 0
+//	}
+//	maxRiskPercent := 0.05 // 2% maximum risk allowed
+//	maxRiskAmount := Amount * maxRiskPercent
+//	riskPerShare := math.Max(1, math.Abs(buyPrice-sl))
+//	positionSize := maxRiskAmount / riskPerShare
+//	return int(math.Min(Amount/buyPrice, positionSize))
+//}
+//func SetAmount(amount float64) {
+//	Amount = amount
+//}
