@@ -83,7 +83,7 @@ func main() {
 			return
 		}
 		apiClient := smartapi.New(m["clientCode"], m["password"], m["marketKey"])
-		session, err := apiClient.GenerateSession(totp.GetTOPT())
+		session, err := apiClient.GenerateSession(totp.GetTOPT(m["clientCode"]))
 		if err != nil {
 			errorMessage := fmt.Sprintf("Error generating session: %s", err.Error())
 			http.Error(writer, errorMessage, http.StatusInternalServerError)
