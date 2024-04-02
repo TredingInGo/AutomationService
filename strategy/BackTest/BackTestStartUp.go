@@ -295,10 +295,10 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 	var tempOrder strategy.ORDER
 	tempOrder.OrderType = "BUY"
 
-	high, low := GetDC(data.Data, idx-1)
+	//high, low := GetDC(data.Data, idx-1)
 
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if data.Data[idx].High > high && data.Data[idx-1].Low < high && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && ma3 > ma5 && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
+	if data.Data[idx].Low > ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && ma3 > ma5 && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].High + 0.05,
 			Sl:        int(data.Data[idx].High * 0.02),
@@ -307,7 +307,7 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].Low < low && data.Data[idx-1].High > low && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
+	} else if data.Data[idx].High < ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].High * 0.02),

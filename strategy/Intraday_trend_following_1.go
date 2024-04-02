@@ -5,7 +5,6 @@ import (
 	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"math"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -84,28 +83,28 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 			fmt.Printf("Todays Session Closed")
 			return
 		}
-		eligibleStocks := getEligibleStocks(stockList, client, userProfile.UserName)
+		getEligibleStocks(stockList, client, userProfile.UserName)
 		// get most eligible stock for trade
 
-		sort.Slice(eligibleStocks, func(i, j int) bool {
-			return eligibleStocks[i].Score > eligibleStocks[j].Score
-		})
-
-		for i := 0; i < len(eligibleStocks); i++ {
-			fmt.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
-		}
-
-		if len(eligibleStocks) > 0 {
-			orderParams := GetOrderParams(eligibleStocks[0])
-			PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
-		}
+		//sort.Slice(eligibleStocks, func(i, j int) bool {
+		//	return eligibleStocks[i].Score > eligibleStocks[j].Score
+		//})
+		//
+		//for i := 0; i < len(eligibleStocks); i++ {
+		//	fmt.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
+		//}
+		//
+		//if len(eligibleStocks) > 0 {
+		//	orderParams := GetOrderParams(eligibleStocks[0])
+		//	PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
+		//}
 	}
 }
 
-func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName string) []*ORDER {
-	filteredStocks := []*ORDER{}
-	orders := []*ORDER{}
-	start := time.Now()
+func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName string) {
+	//filteredStocks := []*ORDER{}
+	//orders := []*ORDER{}
+	//start := time.Now()
 	for _, stock := range stocks {
 		param := EligibleStockParam{
 			Symbols:  Symbols{Symbol: stock.Symbol, Token: stock.Token},
@@ -114,23 +113,24 @@ func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName str
 
 		order := Execute(param.Token, param.Symbol, client, param.UserName)
 		if order != nil {
-			filteredStocks = append(filteredStocks, order)
+			orderParams := GetOrderParams(order)
+			PlaceOrder(client, orderParams, userName, order.Symbol)
 		}
 	}
 
-	fmt.Println("Time to filter stocks ", time.Since(start))
-
-	start = time.Now()
-	for _, stock := range filteredStocks {
-		order := Execute(stock.Symbol, stock.Token, client, userName)
-		if order != nil {
-			orders = append(orders, order)
-		}
-	}
-
-	fmt.Println("Time to get orders ", time.Since(start))
-
-	return orders
+	//fmt.Println("Time to filter stocks ", time.Since(start))
+	//
+	//start = time.Now()
+	//for _, stock := range filteredStocks {
+	//	order := Execute(stock.Symbol, stock.Token, client, userName)
+	//	if order != nil {
+	//		orders = append(orders, order)
+	//	}
+	//}
+	//
+	//fmt.Println("Time to get orders ", time.Since(start))
+	//
+	//return orders
 }
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) *ORDER {
@@ -173,11 +173,14 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	rsiavg8 := getAvg(rsi, 8)
 	adxAvg3 := getAvg(adx14.Adx, 5)
 	adxAvg8 := getAvg(adx14.Adx, 8)
+	volAvg3 := getAvgVol(data.Data, 3)
+	volAvg5 := getAvgVol(data.Data, 5)
+
 	var order ORDER
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
+	if data.Data[idx].Close > getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
 			Sl:        int(data.Data[idx].High * 0.01),
@@ -186,7 +189,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 			OrderType: "BUY",
 		}
 
-	} else if adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 {
+	} else if data.Data[idx].Close < getVwap(data.Data, 14) && volAvg3 > volAvg5 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].Low * 0.01),
@@ -289,10 +292,10 @@ func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 func CaluclateScore(data *DataWithIndicators, order ORDER) float64 {
 	score := 0.0
 	//score += calculateDirectionalStrength(data.Data, order.OrderType)
-	score += calculateROC(data.Data, order.OrderType)
+	//score += calculateROC(data.Data, order.OrderType)
 	score += calculateVolumeSocre(data.Data, order.OrderType)
 	//score += calculateLongerTimePeriodDirectionalScore(data.Data, order.OrderType)
-	score += calculateAtrScore(data.Data, order)
+	//score += calculateAtrScore(data.Data, order)
 	return score
 }
 
@@ -428,4 +431,28 @@ func getAvg(data []float64, period int) float64 {
 		sum += data[i]
 	}
 	return sum / float64(period)
+}
+
+func getAvgVol(data []smartapigo.CandleResponse, period int) float64 {
+	if len(data) < period {
+		return 0.0
+	}
+	sum := 0.0
+	for i := len(data) - 1; i >= len(data)-period; i-- {
+		sum += float64(data[i].Volume)
+	}
+	return sum / float64(period)
+}
+
+func getVwap(data []smartapigo.CandleResponse, period int) float64 {
+	if len(data) < period {
+		return 0.0
+	}
+	cumTypical := 0.0
+	cumVol := 0.0
+	for i := len(data) - 1; i >= len(data)-period; i-- {
+		cumVol += float64(data[i].Volume)
+		cumTypical = cumTypical + (((data[i].High + data[i].Low + data[i].Close) / 3) * float64(data[i].Volume))
+	}
+	return cumTypical / cumVol
 }
