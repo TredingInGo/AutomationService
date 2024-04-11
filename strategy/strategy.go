@@ -49,6 +49,7 @@ type legInfo struct {
 	token     string
 	symbol    string
 	quantity  int
+	oi        uint64
 }
 
 type legs struct {
@@ -62,6 +63,7 @@ type priceInfo struct {
 	price  float64
 	token  string
 	symbol string
+	oi     uint64
 }
 
 func New() strategy {
@@ -110,6 +112,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 			price:  float64(data.LastTradedPrice) / 100.0,
 			token:  data.TokenInfo.Token,
 			symbol: index + expiry + tokenMap[data.TokenInfo.Token],
+			oi:     data.OpenInterest,
 		}
 		var leg legs
 		maxPL := -100000000.0
@@ -126,6 +129,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 								token:     priceMap[strconv.Itoa(spot1)+call].token,
 								symbol:    priceMap[strconv.Itoa(spot1)+call].symbol,
 								quantity:  lotsize,
+								oi:        priceMap[strconv.Itoa(spot1)+call].oi,
 							}
 							leg.leg2 = legInfo{
 								price:     priceMap[strconv.Itoa(spot1)+put].price,
@@ -134,6 +138,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 								token:     priceMap[strconv.Itoa(spot1)+put].token,
 								symbol:    priceMap[strconv.Itoa(spot1)+put].symbol,
 								quantity:  lotsize,
+								oi:        priceMap[strconv.Itoa(spot1)+put].oi,
 							}
 							leg.leg3 = legInfo{
 								price:     priceMap[strconv.Itoa(spot2)+call].price,
@@ -142,6 +147,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 								token:     priceMap[strconv.Itoa(spot2)+call].token,
 								symbol:    priceMap[strconv.Itoa(spot2)+call].symbol,
 								quantity:  lotsize,
+								oi:        priceMap[strconv.Itoa(spot2)+call].oi,
 							}
 							leg.leg4 = legInfo{
 								price:     priceMap[strconv.Itoa(spot2)+put].price,
@@ -150,6 +156,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 								token:     priceMap[strconv.Itoa(spot2)+put].token,
 								symbol:    priceMap[strconv.Itoa(spot2)+put].symbol,
 								quantity:  lotsize,
+								oi:        priceMap[strconv.Itoa(spot2)+put].oi,
 							}
 							maxPL = PLForCurrentPrice
 						}
@@ -158,7 +165,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 			}
 			fmt.Println("Time to calculate ", time.Since(start))
 			start = time.Now()
-			placeFOOrder(maxPL, leg, client)
+			placeFOOrder(maxPL, leg, client, index)
 			fmt.Println("Time to place order ", time.Since(start))
 		}
 
@@ -250,23 +257,30 @@ func CalculateNetPL(ATMStrike, strike1, strike2 float64, priceMap map[string]pri
 
 }
 
-func placeFOOrder(maxPL float64, leg legs, client *smartapigo.Client) {
+func placeFOOrder(maxPL float64, leg legs, client *smartapigo.Client, index string) {
 	fmt.Println("MaxProfit: ", maxPL)
 	fmt.Println(leg)
-	if maxPL > 500 {
-		//order1 := getFOOrderParams(leg.leg1)
-		//order2 := getFOOrderParams(leg.leg2)
-		//order3 := getFOOrderParams(leg.leg3)
-		//order4 := getFOOrderParams(leg.leg4)
-		//orderRes1, err1 := client.PlaceOrder(order1)
-		//orderRes2, err2 := client.PlaceOrder(order2)
-		//orderRes3, err3 := client.PlaceOrder(order3)
-		//orderRes4, err4 := client.PlaceOrder(order4)
-		//fmt.Println(err1, err2, err3, err4)
-		//fmt.Println("orderID 1: ", orderRes1)
-		//fmt.Println("orderID 2: ", orderRes2)
-		//fmt.Println("orderID 3: ", orderRes3)
-		//fmt.Println("orderID 4: ", orderRes4)
+	qty := leg.leg1.quantity / 15.0
+	if index == "NIFTY" {
+		qty = leg.leg1.quantity / 50.0
+	}
+	if maxPL > float64(700.0*qty) {
+		if isAllLiquid(leg) {
+			order1 := getFOOrderParams(leg.leg1)
+			order2 := getFOOrderParams(leg.leg2)
+			order3 := getFOOrderParams(leg.leg3)
+			order4 := getFOOrderParams(leg.leg4)
+			orderRes1, err1 := client.PlaceOrder(order1)
+			orderRes2, err2 := client.PlaceOrder(order2)
+			orderRes3, err3 := client.PlaceOrder(order3)
+			orderRes4, err4 := client.PlaceOrder(order4)
+			fmt.Println(err1, err2, err3, err4)
+			fmt.Println("orderID 1: ", orderRes1)
+			fmt.Println("orderID 2: ", orderRes2)
+			fmt.Println("orderID 3: ", orderRes3)
+			fmt.Println("orderID 4: ", orderRes4)
+		}
+
 	}
 
 }
@@ -285,4 +299,19 @@ func getFOOrderParams(order legInfo) smartapigo.OrderParams {
 	}
 
 	return orderParams
+}
+func isAllLiquid(leg legs) bool {
+	if leg.leg1.oi < 1000 {
+		return false
+	}
+	if leg.leg2.oi < 1000 {
+		return false
+	}
+	if leg.leg3.oi < 1000 {
+		return false
+	}
+	if leg.leg4.oi < 1000 {
+		return false
+	}
+	return true
 }

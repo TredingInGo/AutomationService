@@ -36,7 +36,12 @@ var amountChange []float64
 var trades []int
 
 func BackTest(client *smartapigo.Client, db *sql.DB) {
-	stockList := strategy.LoadStockList(db)
+	stock := strategy.Symbols{
+		"99926000",
+		"NIFTY",
+	}
+	var stockList []strategy.Symbols
+	stockList = append(stockList, stock)
 	populateStockData(stockList, client)
 	//rsi, ema,
 	maxProfit := initTrade()
@@ -96,7 +101,7 @@ func populateStockTick(client *smartapigo.Client, symbolToken string, timeFrame 
 
 	tempTime := time.Now()
 	var candles []smartapigo.CandleResponse
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 9; i++ {
 		toDate := tempTime.Format("2006-01-02 15:04")
 		fromDate := tempTime.Add(time.Hour * 24 * -100).Format("2006-01-02 15:04")
 		tempTime = tempTime.Add(time.Hour * 24 * -100)
@@ -301,20 +306,20 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 	if data.Data[idx].Low > ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && ma3 > ma5 && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].High + 0.05,
-			Sl:        int(data.Data[idx].High * 0.02),
-			Tp:        int(data.Data[idx].High * 0.02),
+			Sl:        20,
+			Tp:        60,
 			Quantity:  calculatePosition(data.Data[idx].High),
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].High < ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
-		order = strategy.ORDER{
-			Spot:      data.Data[idx].Low - 0.05,
-			Sl:        int(data.Data[idx].High * 0.02),
-			Tp:        int(data.Data[idx].High * 0.02),
-			Quantity:  calculatePosition(data.Data[idx].High),
-			OrderType: "SELL",
-		}
+		//} else if data.Data[idx].High < ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {
+		//	order = strategy.ORDER{
+		//		Spot:      data.Data[idx].Low - 0.05,
+		//		Sl:        20,
+		//		Tp:        60,
+		//		Quantity:  calculatePosition(data.Data[idx].High),
+		//		OrderType: "SELL",
+		//	}
 
 	}
 	order.Score = strategy.CaluclateScore(&data, order)
@@ -325,17 +330,17 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 }
 
 func calculatePosition(price float64) int {
-	tempAmount := Amount - 500
-	quantity := tempAmount / price
+	//tempAmount := Amount
+	//quantity := tempAmount / price
 	//Amount = Amount - (quantity * price) - 200
-	return int(quantity) * 5
+	return 50
 }
 
 func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, orderType string) float64 {
 	trailingStopLoss := sl
 	for *idx < len(data)-1 {
 		currentTime := data[*idx].Timestamp
-		compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 20, 0, 0, currentTime.Location())
+		compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 15, 0, 0, currentTime.Location())
 		if currentTime.After(compareTime) {
 			if orderType == "BUY" {
 				return data[*idx].Close - spot

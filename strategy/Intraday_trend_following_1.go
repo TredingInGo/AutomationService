@@ -167,6 +167,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	sma8 := data.Indicators["sma"+"8"][idx]
 	sma13 := data.Indicators["sma"+"13"][idx]
 	sma21 := data.Indicators["sma"+"21"][idx]
+	ema8 := data.Indicators["ema"+"21"][idx]
 	rsi := data.Indicators["rsi"+"14"]
 	adx14 := data.Adx["Adx"+"14"]
 	rsiAvg3 := getAvg(rsi, 3)
@@ -180,7 +181,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	order.OrderType = "None"
 	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if data.Data[idx].Close > getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
+	if data.Data[idx-1].Low > ema8 && data.Data[idx].Close > getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
 			Sl:        int(data.Data[idx].High * 0.01),
@@ -189,7 +190,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].Close < getVwap(data.Data, 14) && volAvg3 > volAvg5 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 {
+	} else if data.Data[idx-1].High < ema8 && data.Data[idx].Close < getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        int(data.Data[idx].Low * 0.01),
@@ -200,6 +201,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 	}
 	order.Score = CaluclateScore(data, order)
+
 	order.Symbol = symbol
 	order.Token = token
 
@@ -221,7 +223,7 @@ func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 		SquareOff:        strconv.Itoa(order.Tp),
 		StopLoss:         strconv.Itoa(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: strconv.Itoa(1),
+		TrailingStopLoss: strconv.Itoa(2),
 	}
 
 	return orderParams
@@ -258,7 +260,11 @@ func TrackOrders(client *smartapigo.Client, symbol, userName string) {
 				continue
 			}
 			if postion.SymbolName == symbol && qty != 0 {
-				pl, _ := strconv.ParseFloat(postion.NetValue, 64)
+				pl, err := strconv.ParseFloat(postion.NetValue, 64)
+				if err != nil {
+					isAnyPostionOpen = true
+					continue
+				}
 				fmt.Printf("current P/L in %v symbol is %v", symbol, pl)
 			}
 			if qty != 0 {
@@ -282,7 +288,6 @@ func TrackOrders(client *smartapigo.Client, symbol, userName string) {
 
 func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
 	Amount := GetAmount(client)
-	Amount -= 500
 	if Amount/buyPrice <= 1 {
 		return 0
 	}
