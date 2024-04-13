@@ -286,7 +286,7 @@ func placeFOOrder(maxPL float64, leg legs, client *smartapigo.Client, index stri
 }
 func getFOOrderParams(order legInfo) smartapigo.OrderParams {
 	orderParams := smartapigo.OrderParams{
-		Variety:         "AMO",
+		Variety:         "NORMAL",
 		TradingSymbol:   order.symbol,
 		SymbolToken:     order.token,
 		TransactionType: order.orderType,
