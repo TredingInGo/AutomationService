@@ -1,6 +1,7 @@
 package strategy
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
@@ -52,7 +53,7 @@ func CloseSession(client *smartapigo.Client) bool {
 	currentTime := time.Now()
 	compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 0, 0, 0, currentTime.Location())
 	userProfile, _ := client.GetUserProfile()
-	if currentTime.After(compareTime) {
+	if currentTime.After(compareTime) && false {
 		client.Logout()
 		fmt.Printf("Session closed  for %v", userProfile.UserName)
 		return true
@@ -67,23 +68,32 @@ func ForceCloseSession(client *smartapigo.Client) {
 	fmt.Printf("Session closed  for %v", userProfile.UserName)
 }
 
-func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
+func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *sql.DB) {
 
 	stockList := LoadStockList(db)
 	userProfile, _ := client.GetUserProfile()
-	TrackOrders(client, "DUMMY", userProfile.UserName)
+	TrackOrders(ctx, client, "DUMMY", userProfile.UserName)
 
 	for {
 		//for _, stock := range stockList {
 		//	CloseSession(client)
 		//	Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
 		//}
+
 		isClosed := CloseSession(client)
 		if isClosed {
 			fmt.Printf("Todays Session Closed")
 			return
 		}
-		getEligibleStocks(stockList, client, userProfile.UserName)
+
+		select {
+		case <-ctx.Done():
+			fmt.Printf("context cancelled in TrendFollowingStretgy for user: %v\n", userProfile.UserName)
+			return
+		default:
+		}
+
+		getEligibleStocks(ctx, stockList, client, userProfile.UserName)
 		// get most eligible stock for trade
 
 		//sort.Slice(eligibleStocks, func(i, j int) bool {
@@ -101,11 +111,26 @@ func TrendFollowingStretgy(client *smartapigo.Client, db *sql.DB) {
 	}
 }
 
-func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName string) {
+func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo.Client, userName string) {
 	//filteredStocks := []*ORDER{}
 	//orders := []*ORDER{}
 	//start := time.Now()
 	for _, stock := range stocks {
+		isClosed := CloseSession(client)
+		if isClosed {
+			fmt.Printf("Todays Session Closed")
+			return
+		}
+
+		// check for context done
+		select {
+		case <-ctx.Done():
+			fmt.Printf("Context cancelled for user: %v\n", userName)
+			return
+		default:
+
+		}
+
 		param := EligibleStockParam{
 			Symbols:  Symbols{Symbol: stock.Symbol, Token: stock.Token},
 			UserName: userName,
@@ -114,7 +139,7 @@ func getEligibleStocks(stocks []Symbols, client *smartapigo.Client, userName str
 		order := Execute(param.Token, param.Symbol, client, param.UserName)
 		if order != nil {
 			orderParams := GetOrderParams(order)
-			PlaceOrder(client, orderParams, userName, order.Symbol)
+			PlaceOrder(ctx, client, orderParams, userName, order.Symbol)
 		}
 	}
 
@@ -154,11 +179,11 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	return &order
 }
 
-func PlaceOrder(client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) {
+func PlaceOrder(ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) {
 	fmt.Printf("\norder params: for %v \n%v\n", userName, orderParams)
 	orderRes, _ := client.PlaceOrder(orderParams)
 	fmt.Printf("order response %v for %v", orderRes, userName)
-	TrackOrders(client, symbol, userName)
+	TrackOrders(ctx, client, symbol, userName)
 }
 
 func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string, client *smartapigo.Client) ORDER {
@@ -238,13 +263,26 @@ func GetAmount(client *smartapigo.Client) float64 {
 	return amount
 }
 
-func TrackOrders(client *smartapigo.Client, symbol, userName string) {
+func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userName string) {
 	isPrint := true
 	for {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("context cancelled for user: %v\n", userName)
+			return
+		default:
+
+		}
+
 		//orders, _ := client.GetOrderBook()
 		time.Sleep(1 * time.Second)
-		positions, _ := client.GetPositions()
+		positions, error := client.GetPositions()
 		isAnyPostionOpen := false
+		if error != nil {
+			isAnyPostionOpen = true
+			continue
+		}
+
 		totalPL := 0.0
 		fmt.Printf("\n*************** Positions ************** \n")
 
@@ -270,7 +308,11 @@ func TrackOrders(client *smartapigo.Client, symbol, userName string) {
 			if qty != 0 {
 				isAnyPostionOpen = true
 			}
-			val, _ := strconv.ParseFloat(postion.NetValue, 64)
+			val, err2 := strconv.ParseFloat(postion.NetValue, 64)
+			if err2 != nil {
+				isAnyPostionOpen = true
+				continue
+			}
 			totalPL += val
 		}
 		isPrint = false
@@ -287,7 +329,7 @@ func TrackOrders(client *smartapigo.Client, symbol, userName string) {
 }
 
 func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
-	Amount := GetAmount(client)
+	Amount := math.Min(20000.0, GetAmount(client))
 	if Amount/buyPrice <= 1 {
 		return 0
 	}

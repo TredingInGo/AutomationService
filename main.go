@@ -1,18 +1,23 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/TredingInGo/AutomationService/Simulation"
 	"github.com/TredingInGo/AutomationService/historyData"
+	intra_day "github.com/TredingInGo/AutomationService/http/intra-day"
+	"github.com/TredingInGo/AutomationService/http/session"
+	"github.com/TredingInGo/AutomationService/http/start"
+	"github.com/TredingInGo/AutomationService/http/stop"
 	"github.com/TredingInGo/AutomationService/smartStream"
 	"github.com/TredingInGo/AutomationService/strategy"
 	"github.com/TredingInGo/AutomationService/strategy/BackTest"
-	"github.com/TredingInGo/AutomationService/totp"
+	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/utils"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -20,43 +25,19 @@ import (
 )
 
 var (
-	accessToken, feedToken, refreshToken string
-	apiClient                            *smartapi.Client
-	session                              smartapi.UserSession
-	err                                  error
-	userSessions                         = make(map[string]*clientSession)
+
+	//apiClient                            *smartapi.Client
+	//session                              smartapi.UserSession
+	//err                                  error
+	userSessions = make(map[string]*clientSession)
 )
 
 type clientSession struct {
-	apiClient *smartapi.Client
-	session   smartapi.UserSession
+	apiClient  *smartapi.Client
+	session    smartapi.UserSession
+	cancelFunc context.CancelFunc
 }
 
-func init() {
-	accessToken = os.Getenv("ACCESS_TOKEN")
-	feedToken = os.Getenv("FEED_TOKEN")
-	refreshToken = os.Getenv("REFRESH_TOKEN")
-}
-func sendPing() {
-	for {
-		time.Sleep(120 * time.Second)
-		url := "https://tredingingo.onrender.com/ping"
-
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Fatalf("Error occurred while calling the API: %s", err.Error())
-		}
-		defer resp.Body.Close() // Make sure to close the response body at the end
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalf("Error occurred while reading the response body: %s", err.Error())
-		}
-		fmt.Println("API Response:", string(body))
-
-	}
-
-}
 func main() {
 	fmt.Println("Starting the server, time: ", time.Now())
 	mutex := sync.Mutex{}
@@ -64,45 +45,21 @@ func main() {
 	defer func() {
 		recover()
 	}()
-	go sendPing()
+
+	go utils.SendPing()
 	strategy.PopuletInstrumentsList()
 	r := mux.NewRouter()
 
-	r.HandleFunc("/session", func(writer http.ResponseWriter, request *http.Request) {
+	activeUsers := users.New()
+	startHandler := start.New(activeUsers)
+	sessionHandler := session.New(activeUsers)
+	intraDayHandler := intra_day.New(activeUsers)
+	stopHandler := stop.New(activeUsers)
 
-		m := map[string]string{}
-		body, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			http.Error(writer, "Error reading request body", http.StatusBadRequest)
-			return
-		}
-
-		err = json.Unmarshal(body, &m)
-		if err != nil {
-			http.Error(writer, "Error parsing JSON request body", http.StatusBadRequest)
-			return
-		}
-		apiClient := smartapi.New(m["clientCode"], m["password"], m["marketKey"])
-		session, err := apiClient.GenerateSession(totp.GetTOPT(m["clientCode"]))
-		if err != nil {
-			errorMessage := fmt.Sprintf("Error generating session: %s", err.Error())
-			http.Error(writer, errorMessage, http.StatusInternalServerError)
-			return
-		}
-
-		mutex.Lock()
-		userSessions[m["clientCode"]] = &clientSession{
-			apiClient: apiClient,
-			session:   session,
-		}
-		mutex.Unlock()
-
-		setEnv(session)
-
-		successMessage := fmt.Sprintf("User Session Tokens: %v", session.UserSessionTokens)
-		writer.WriteHeader(http.StatusOK)
-		json.NewEncoder(writer).Encode(map[string]string{"message": "Connected successfully with angel one", "sessionTokens": successMessage})
-	}).Methods(http.MethodPost)
+	r.HandleFunc("/start", startHandler.Start).Methods(http.MethodPost)
+	r.HandleFunc("/stop", stopHandler.Stop).Methods(http.MethodPost)
+	r.HandleFunc("/session", sessionHandler.Session).Methods(http.MethodPost)
+	r.HandleFunc("/intra-day", intraDayHandler.IntraDay).Methods(http.MethodPost)
 
 	r.HandleFunc("/ping", func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusOK)
@@ -153,37 +110,6 @@ func main() {
 		writer.WriteHeader(200)
 	}).Methods(http.MethodGet)
 
-	r.HandleFunc("/intra-day", func(writer http.ResponseWriter, request *http.Request) {
-		body, _ := ioutil.ReadAll(request.Body)
-		var param = make(map[string]string)
-		json.Unmarshal(body, &param)
-
-		clientCode := param["clientCode"]
-		if clientCode == "" {
-			writer.Write([]byte("clientCode is required"))
-			writer.WriteHeader(400)
-			return
-		}
-
-		mutex.Lock()
-		userSession, ok := userSessions[clientCode]
-		mutex.Unlock()
-
-		if !ok {
-			writer.Write([]byte("clientCode not found"))
-			writer.WriteHeader(400)
-			return
-		}
-
-		if userSession.session.FeedToken == "" {
-			fmt.Println("feed token not set")
-			return
-		}
-
-		db := Simulation.Connect()
-		strategy.TrendFollowingStretgy(userSession.apiClient, db)
-	}).Methods(http.MethodPost)
-
 	r.HandleFunc("/swing", func(writer http.ResponseWriter, request *http.Request) {
 		body, _ := ioutil.ReadAll(request.Body)
 		var param = make(map[string]string)
@@ -223,7 +149,7 @@ func main() {
 	r.HandleFunc("/backTest", func(writer http.ResponseWriter, request *http.Request) {
 		body, _ := ioutil.ReadAll(request.Body)
 		var param = make(map[string]string)
-		json.Unmarshal(body, &param)
+		err := json.Unmarshal(body, &param)
 		clientCode := param["clientCode"]
 		if clientCode == "" {
 			writer.Write([]byte("clientCode is required"))
@@ -276,6 +202,8 @@ func main() {
 		apiClient := userSession.apiClient
 		session := userSession.session
 
+		var err error
+
 		//Renew User Tokens using refresh token
 		session.UserSessionTokens, err = apiClient.RenewAccessToken(session.RefreshToken)
 		if err != nil {
@@ -288,40 +216,40 @@ func main() {
 
 	r.HandleFunc("/profile", func(writer http.ResponseWriter, request *http.Request) {
 		// Get User Profile
-		session.UserProfile, err = apiClient.GetUserProfile()
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
-		fmt.Println("User Profile :- ", session.UserProfile)
-		fmt.Println("User Session Object :- ", session)
+		//profile, err := apiClient.GetUserProfile()
+		//if err != nil {
+		//	fmt.Println(err.Error())
+		//	return
+		//}
+		//
+		//fmt.Println("User Profile :- ", session.UserProfile)
+		//fmt.Println("User Session Object :- ", session)
 
 	})
 
 	r.HandleFunc("/order", func(writer http.ResponseWriter, request *http.Request) {
 		//Place Order
-		order, err := apiClient.PlaceOrder(smartapi.OrderParams{
-			Variety:         "NORMAL",
-			TradingSymbol:   "SBIN-EQ",
-			SymbolToken:     "3045",
-			TransactionType: "BUY",
-			Exchange:        "NSE",
-			OrderType:       "LIMIT",
-			ProductType:     "INTRADAY",
-			Duration:        "DAY",
-			Price:           "19500",
-			SquareOff:       "0",
-			StopLoss:        "0",
-			Quantity:        "1",
-		})
-
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
-		fmt.Println("Placed Order ID and Script :- ", order)
+		//order, err := apiClient.PlaceOrder(smartapi.OrderParams{
+		//	Variety:         "NORMAL",
+		//	TradingSymbol:   "SBIN-EQ",
+		//	SymbolToken:     "3045",
+		//	TransactionType: "BUY",
+		//	Exchange:        "NSE",
+		//	OrderType:       "LIMIT",
+		//	ProductType:     "INTRADAY",
+		//	Duration:        "DAY",
+		//	Price:           "19500",
+		//	SquareOff:       "0",
+		//	StopLoss:        "0",
+		//	Quantity:        "1",
+		//})
+		//
+		//if err != nil {
+		//	fmt.Println(err.Error())
+		//	return
+		//}
+		//
+		//fmt.Println("Placed Order ID and Script :- ", order)
 	})
 
 	r.HandleFunc("/option", func(writer http.ResponseWriter, request *http.Request) {
@@ -366,14 +294,4 @@ func main() {
 	}
 
 	http.ListenAndServe(":"+port, r)
-}
-
-func setEnv(session smartapi.UserSession) {
-	os.Setenv("ACCESS_TOKEN", session.AccessToken)
-	os.Setenv("FEED_TOKEN", session.FeedToken)
-	os.Setenv("REFRESH_TOKEN", session.RefreshToken)
-
-	feedToken = session.FeedToken
-	accessToken = session.AccessToken
-	refreshToken = session.RefreshToken
 }
