@@ -53,7 +53,7 @@ func CloseSession(client *smartapigo.Client) bool {
 	currentTime := time.Now()
 	compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 0, 0, 0, currentTime.Location())
 	userProfile, _ := client.GetUserProfile()
-	if currentTime.After(compareTime) && false {
+	if currentTime.After(compareTime) {
 		client.Logout()
 		fmt.Printf("Session closed  for %v", userProfile.UserName)
 		return true
@@ -204,7 +204,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 	var order ORDER
 	order.OrderType = "None"
-	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
+	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if data.Data[idx-1].Low > ema8 && data.Data[idx].Close > getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 {
 		order = ORDER{
@@ -248,7 +248,7 @@ func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 		SquareOff:        strconv.Itoa(order.Tp),
 		StopLoss:         strconv.Itoa(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: strconv.Itoa(2),
+		TrailingStopLoss: strconv.Itoa(1),
 	}
 
 	return orderParams
