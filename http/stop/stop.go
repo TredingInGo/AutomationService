@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/TredingInGo/AutomationService/user"
@@ -26,9 +27,16 @@ func New(users user.Users) Handler {
 
 func (h *Handler) stopper() {
 	ticker := time.NewTicker(1 * time.Minute)
+	isTestMode := os.Getenv("TEST_MODE") == "true"
 
-	for time := range ticker.C {
-		if time.Hour() == 3 && time.Minute() == 16 {
+	for t := range ticker.C {
+		if t.Hour() == 3 && t.Minute() == 16 || isTestMode {
+			// in test_mode, call after 15 minutes of auto start time
+			if isTestMode {
+				// creating a timer to wait for 15 minutes
+				<-time.NewTimer(15 * time.Minute).C
+			}
+
 			h.activeUsers.RemoveAll()
 		}
 	}

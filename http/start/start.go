@@ -37,10 +37,13 @@ func New(users user.Users) Handler {
 
 func (h *Handler) starter() {
 	ticker := time.NewTicker(1 * time.Minute)
+	isTestMode := os.Getenv("TEST_MODE") == "true"
 
 	for t := range ticker.C {
-		if t.Hour() == 10 && t.Minute() == 0 {
-			fmt.Println("Running starter at: ", time.Now().Format("2006-01-02 15:04:05"))
+		if t.Hour() == 10 && t.Minute() == 0 || isTestMode {
+			startTime := time.Now().Format("2006-01-02 15:04:05")
+			fmt.Println("Running starter at: ", startTime)
+
 			for _, creds := range h.list {
 				// check if intra-day is already running
 				user, exists := h.activeUsers.Get(creds.clientCode)
