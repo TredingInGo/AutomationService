@@ -62,7 +62,7 @@ func (s *Session) Session(writer http.ResponseWriter, request *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	user := &users.UserInfo{
+	user := &user.UserInfo{
 		ApiClient:  apiClient,
 		Session:    session,
 		Ctx:        ctx,
