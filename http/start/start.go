@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 )
 
 type cred struct {
@@ -18,12 +18,12 @@ type cred struct {
 }
 
 type Handler struct {
-	activeUsers users.ActiveUsers
+	activeUsers user.Users
 	list        map[string]*cred
 	mu          sync.Mutex
 }
 
-func New(users users.ActiveUsers) Handler {
+func New(users user.Users) Handler {
 	h := Handler{
 		activeUsers: users,
 		list:        make(map[string]*cred),
@@ -38,10 +38,9 @@ func New(users users.ActiveUsers) Handler {
 func (h *Handler) starter() {
 	ticker := time.NewTicker(1 * time.Minute)
 
-	count := 0
 	for t := range ticker.C {
 		if t.Hour() == 10 && t.Minute() == 0 {
-			count++
+			fmt.Println("Running starter at: ", time.Now().Format("2006-01-02 15:04:05"))
 			for _, creds := range h.list {
 				// check if intra-day is already running
 				user, exists := h.activeUsers.Get(creds.clientCode)

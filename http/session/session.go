@@ -8,15 +8,15 @@ import (
 	"net/http"
 
 	"github.com/TredingInGo/AutomationService/totp"
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 	smartapi "github.com/TredingInGo/smartapi"
 )
 
 type Session struct {
-	activeUsers users.ActiveUsers
+	activeUsers user.Users
 }
 
-func New(users users.ActiveUsers) Session {
+func New(users user.Users) Session {
 	return Session{activeUsers: users}
 }
 

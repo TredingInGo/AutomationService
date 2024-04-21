@@ -5,17 +5,32 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 )
 
 type Handler struct {
-	activeUsers users.ActiveUsers
+	activeUsers user.Users
 }
 
-func New(users users.ActiveUsers) Handler {
-	return Handler{
+func New(users user.Users) Handler {
+	h := Handler{
 		activeUsers: users,
+	}
+
+	go h.stopper()
+
+	return h
+}
+
+func (h *Handler) stopper() {
+	ticker := time.NewTicker(1 * time.Minute)
+
+	for time := range ticker.C {
+		if time.Hour() == 3 && time.Minute() == 16 {
+			h.activeUsers.RemoveAll()
+		}
 	}
 }
 
@@ -45,7 +60,7 @@ func (h *Handler) Stop(writer http.ResponseWriter, request *http.Request) {
 	// call cancel context
 	userInfo.CancelFunc()
 
-	// remove from active users
+	// remove from active user
 	h.activeUsers.Remove(clientID)
 
 	writer.WriteHeader(http.StatusOK)
