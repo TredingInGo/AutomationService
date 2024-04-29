@@ -10,7 +10,7 @@ pipeline {
             steps {
                 script {
                     // Set PATH environment variable to include Go binary directory
-                    env.PATH = "${tool 'Go'}/bin:${env.PATH}"
+                    env.PATH = "${tool 'GO'}/bin:${env.PATH}"
                     def mvCommand = 'pwd && ls -al && cp -R /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService && cd /var/www/html/AutomationService && go build '
                     sh mvCommand
                 }
