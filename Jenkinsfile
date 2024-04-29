@@ -9,7 +9,7 @@ pipeline {
         stage('Commands') {
             steps {
                 script {
-                    def mvCommand = 'pwd && ls -al && mv /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService'
+                    def mvCommand = 'pwd && ls -al && cp -R /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService'
                     sh mvCommand
                 }
             }
