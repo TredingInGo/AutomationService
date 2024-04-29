@@ -9,7 +9,7 @@ pipeline {
         stage('Commands') {
             steps {
                 script {
-                    def sshCommand = 'pwd && ls -al && cd /var/www/html/AutomationService && pwd && git pull origin main'
+                    def sshCommand = 'pwd && ls -al && mv /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService '
                     sh sshCommand
                 }
             }
