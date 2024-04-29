@@ -9,8 +9,8 @@ pipeline {
         stage('Commands') {
             steps {
                 script {
-                    def sshCommand = 'pwd && ls -al && sudo su && mv /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService '
-                    sh sshCommand
+                    def mvCommand = 'pwd && ls -al && mv /var/lib/jenkins/workspace/go-pipeline/* /var/www/html/AutomationService'
+                    sh mvCommand
                 }
             }
         }
