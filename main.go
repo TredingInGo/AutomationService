@@ -265,7 +265,7 @@ func main() {
 		}
 
 		mutex.Lock()
-		userSession, ok := userSessions[clientCode]
+		userSession, ok := activeUsers.Get(clientCode)
 		mutex.Unlock()
 
 		if !ok {
@@ -274,15 +274,15 @@ func main() {
 			return
 		}
 
-		if userSession.session.FeedToken == "" {
+		if userSession.Session.FeedToken == "" {
 			fmt.Println("feed token not set")
 			return
 		}
 
-		ltp := smartStream.New(clientCode, userSession.session.FeedToken)
+		ltp := smartStream.New(clientCode, userSession.Session.FeedToken)
 		strategy := strategy.New()
 
-		strategy.Algo(ltp, param["expiry"], param["index"], userSession.apiClient)
+		strategy.Algo(ltp, param["expiry"], param["index"], userSession.ApiClient)
 
 	}).Methods(http.MethodPost)
 

@@ -13,6 +13,7 @@ var (
 
 type SmartStream interface {
 	Connect(ch chan *models.SnapQuote, mode models.SmartStreamSubsMode, tokenInfo []models.TokenInfo)
+	STOP()
 }
 
 type ltp struct {
@@ -27,4 +28,8 @@ func (l ltp) Connect(ch chan *models.SnapQuote, mode models.SmartStreamSubsMode,
 	l.client.SetOnConnected(onConnected(l.client, mode, tokenInfo))
 	l.client.SetOnSnapquote(onLTP(ch))
 	l.client.Connect()
+}
+
+func (l ltp) STOP() {
+	l.client.Stop()
 }
