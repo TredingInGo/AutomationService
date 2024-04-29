@@ -159,7 +159,7 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 }
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) *ORDER {
-	data := GetStockTick(client, stockToken, "FIVE_MINUTE")
+	data := GetStockTick(client, stockToken, "FIVE_MINUTE", nse)
 	if len(data) == 0 {
 		return nil
 	}
@@ -291,7 +291,9 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 				fmt.Printf("\nposition for %v is %v\n", postion, userName)
 
 			}
-
+			if postion.SymbolToken == niftyToken || postion.SymbolToken == bankNiftyToken {
+				continue
+			}
 			qty, err := strconv.Atoi(postion.NetQty)
 			if err != nil {
 				isAnyPostionOpen = true

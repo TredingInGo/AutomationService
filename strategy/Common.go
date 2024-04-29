@@ -68,7 +68,7 @@ func LoadStockListForSwing(db *sql.DB) []Symbols {
 
 }
 
-func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame string) []smartapigo.CandleResponse {
+func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame string, exchange string) []smartapigo.CandleResponse {
 	tempTime := time.Now()
 	toDate := tempTime.Format("2006-01-02 15:04")
 	fromDate := tempTime.Add(time.Hour * 24 * -20).Format("2006-01-02 15:04")
@@ -78,7 +78,7 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 	client.SetTimeout(5 * time.Second)
 
 	tempHistoryData, _ := client.GetCandleData(smartapigo.CandleParams{
-		Exchange:    "NSE",
+		Exchange:    exchange,
 		SymbolToken: symbolToken,
 		Interval:    timeFrame,
 		FromDate:    fromDate,
