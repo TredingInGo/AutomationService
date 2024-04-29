@@ -9,24 +9,10 @@ pipeline {
         stage('Commands') {
             steps {
                 script {
-                    def sshCommand = 'pwd && ls -al'
+                    def sshCommand = 'pwd && ls -al && cd /var/www/html && pwd && git pull origin main'
                     sh sshCommand
                 }
             }
-        }
-    }
-    post {
-        always {
-            emailext body: '''
-            Hi,
-            $PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS:
-            Check console output at $BUILD_URL to view the results.
-            Thanks,
-            Jenkins
-            ''',
-            subject: '$PROJECT_NAME - Build # $BUILD_NUMBER - $BUILD_STATUS:',
-            to: 'himan.7525@gmail.com',
-            replyTo: '$DEFAULT_REPLYTO'
         }
     }
 }
