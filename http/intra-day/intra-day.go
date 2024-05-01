@@ -8,14 +8,14 @@ import (
 
 	"github.com/TredingInGo/AutomationService/Simulation"
 	"github.com/TredingInGo/AutomationService/strategy"
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 )
 
 type IntraDay struct {
-	activeUsers users.ActiveUsers
+	activeUsers user.Users
 }
 
-func New(users users.ActiveUsers) IntraDay {
+func New(users user.Users) IntraDay {
 	return IntraDay{activeUsers: users}
 }
 

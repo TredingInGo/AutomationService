@@ -8,15 +8,15 @@ import (
 	"net/http"
 
 	"github.com/TredingInGo/AutomationService/totp"
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 	smartapi "github.com/TredingInGo/smartapi"
 )
 
 type Session struct {
-	activeUsers users.ActiveUsers
+	activeUsers user.Users
 }
 
-func New(users users.ActiveUsers) Session {
+func New(users user.Users) Session {
 	return Session{activeUsers: users}
 }
 
@@ -62,7 +62,7 @@ func (s *Session) Session(writer http.ResponseWriter, request *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	user := &users.UserInfo{
+	user := &user.UserInfo{
 		ApiClient:  apiClient,
 		Session:    session,
 		Ctx:        ctx,

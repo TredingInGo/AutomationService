@@ -115,6 +115,8 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 	//filteredStocks := []*ORDER{}
 	//orders := []*ORDER{}
 	//start := time.Now()
+
+	fmt.Println("running getEligibleStocks for: ", userName, " at: ", time.Now().Format("2006-01-02 15:04:05"))
 	for _, stock := range stocks {
 		isClosed := CloseSession(client)
 		if isClosed {

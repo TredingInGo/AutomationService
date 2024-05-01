@@ -13,7 +13,7 @@ import (
 	"github.com/TredingInGo/AutomationService/smartStream"
 	"github.com/TredingInGo/AutomationService/strategy"
 	"github.com/TredingInGo/AutomationService/strategy/BackTest"
-	"github.com/TredingInGo/AutomationService/users"
+	"github.com/TredingInGo/AutomationService/user"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -48,7 +48,7 @@ func main() {
 	strategy.PopuletInstrumentsList()
 	r := mux.NewRouter()
 
-	activeUsers := users.New()
+	activeUsers := user.New()
 	startHandler := start.New(activeUsers)
 	sessionHandler := session.New(activeUsers)
 	intraDayHandler := intra_day.New(activeUsers)
