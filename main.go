@@ -14,7 +14,6 @@ import (
 	"github.com/TredingInGo/AutomationService/strategy"
 	"github.com/TredingInGo/AutomationService/strategy/BackTest"
 	"github.com/TredingInGo/AutomationService/user"
-	"github.com/TredingInGo/AutomationService/utils"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -46,7 +45,6 @@ func main() {
 		recover()
 	}()
 
-	go utils.SendPing()
 	strategy.PopuletInstrumentsList()
 	r := mux.NewRouter()
 
