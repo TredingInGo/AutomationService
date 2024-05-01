@@ -13,16 +13,18 @@ import (
 )
 
 const (
-	startTime      = "09:15"
-	endTime        = "15:30"
-	nifty          = 50
-	bankNifty      = 100
-	niftyToken     = "99926000"
-	bankNiftyToken = "99926009"
-	call           = "CE"
-	put            = "PE"
-	nse            = "NSE"
-	nfo            = "NFO"
+	startTime        = "09:15"
+	endTime          = "15:30"
+	nifty            = 50
+	bankNifty        = 100
+	niftyToken       = "99926000"
+	bankNiftyToken   = "99926009"
+	call             = "CE"
+	put              = "PE"
+	nse              = "NSE"
+	nfo              = "NFO"
+	niftyLotSize     = 25
+	bankNiftyLotSize = 15
 )
 
 var (
@@ -84,24 +86,30 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 	}
 	for {
 		candles, ATMstrike := getATMStrike(client, index)
-		if candles == nil || maxTrade == 0 {
-			return
+		if len(candles) <= 100 || maxTrade == 0 {
+			continue
 		}
 		var ITMStrike int
 		if index == "NIFTY" {
 			ITMStrike = nifty * 2
 		} else if index == "BANKNIFTY" {
-			ITMStrike = nifty * 2
+			ITMStrike = bankNifty * 2
 		}
 		callSpot := ATMstrike - float64(ITMStrike)
 		callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
 		callToken := GetFOToken(callSymbol, nfo)
 		callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
+		if len(callSideITMTick) <= 100 {
+			continue
+		}
 
 		putSpot := ATMstrike + float64(ITMStrike)
 		putSymbol := index + expiry + strconv.Itoa(int(putSpot)) + put
 		putToken := GetFOToken(putSymbol, nfo)
 		putSideITMTick := GetStockTick(client, putToken, "FIVE_MINUTE", nfo)
+		if len(putSideITMTick) <= 100 {
+			continue
+		}
 
 		indexDataWithIndicators := &DataWithIndicators{
 			Data:     candles,
@@ -123,6 +131,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 		PopulateIndicators(callDataWithIndicators)
 		PopulateIndicators(putDataWithIndicators)
 		order := TrendFollowingRsiForFO(indexDataWithIndicators, callDataWithIndicators, putDataWithIndicators, callToken, putToken, callSymbol, putSymbol, userProfile.UserName, client, int(callSpot), int(putSpot))
+		fmt.Println(order)
 		if order.orderType == "None" || order.quantity < 1 {
 			continue
 		}
@@ -177,15 +186,21 @@ func getATMStrike(client *smartapigo.Client, index string) ([]smartapigo.CandleR
 	//var candles []smartapigo.CandleResponse
 	if index == "NIFTY" {
 		candles := GetStockTick(client, niftyToken, "FIVE_MINUTE", nse)
+		if len(candles) <= 100 {
+			return []smartapigo.CandleResponse{}, 0.0
+		}
 		spot := candles[len(candles)-1].Close
 		mf := int(spot) / int(nifty)
 		atmStrike := float64(nifty * mf)
 		return candles, atmStrike
 	} else if index == "BANKNIFTY" {
 		candles := GetStockTick(client, bankNiftyToken, "FIVE_MINUTE", nse)
+		if len(candles) <= 100 {
+			return []smartapigo.CandleResponse{}, 0.0
+		}
 		spot := candles[len(candles)-1].Close
 		mf := int(spot) / int(bankNifty)
-		atmStrike := float64(nifty * mf)
+		atmStrike := float64(bankNifty * mf)
 		return candles, atmStrike
 	}
 	return nil, 0
@@ -209,6 +224,7 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 			return orderDetails, false
 		}
 	}
+	fmt.Printf("order placed %v", order)
 	orders, _ = client.GetOrderBook()
 	slOrder := getSLOrder(orders, order, orderRes.OrderID)
 	return slOrder, true
@@ -241,12 +257,13 @@ func getFOOrderInfo(index string, order LegInfo) ORDER {
 	if index == "NIFTY" {
 		sl = 20
 		tp = 80
-		lotSize = nifty / 2
+		lotSize = niftyLotSize
 	} else if index == "BANKNIFTY" {
 		sl = 30
 		tp = 120
-		lotSize = bankNifty / 2
+		lotSize = bankNiftyLotSize
 	}
+	fmt.Printf("\nlot size %v \n", lotSize)
 	orderParam := ORDER{
 		Spot:      order.price,
 		Sl:        sl,
@@ -278,33 +295,35 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	adxAvg8 := getAvg(adx14.Adx, 8)
 	callEma7 := callData.Indicators["ema"+"7"][callIdx]
 	callEma22 := callData.Indicators["ema"+"22"][callIdx]
+	callEma6 := callData.Indicators["ema"+"6"][callIdx]
 	putEma7 := putData.Indicators["ema"+"7"][putIdx]
 	putEma22 := putData.Indicators["ema"+"22"][putIdx]
 	callRsi := callData.Indicators["rsi"+"14"][callIdx]
 	putRsi := putData.Indicators["rsi"+"14"][putIdx]
+	putEma6 := putData.Indicators["ema"+"6"][putIdx]
 
 	var order LegInfo
 	order.orderType = "None"
 	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if data.Data[idx-1].Low > ema8 && callData.Data[idx].Close > getVwap(callData.Data, 14) && callData.Data[idx].Volume > callData.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
+	if callData.Data[callIdx].Low > callEma6 && data.Data[idx-1].Low > ema8 && callData.Data[callIdx].Close > getVwap(callData.Data, 14) && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
 		order = LegInfo{
-			price:     callData.Data[idx].High + 0.5,
+			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
 			orderType: "BUY",
 			token:     callToken,
 			symbol:    callSymbol,
-			quantity:  2,
+			quantity:  1,
 		}
 
-	} else if data.Data[idx-1].High < ema8 && putData.Data[idx].Close < getVwap(putData.Data, 14) && putData.Data[idx].Volume > putData.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
+	} else if putData.Data[putIdx].Low > putEma6 && data.Data[idx-1].High < ema8 && putData.Data[putIdx].Close < getVwap(putData.Data, 14) && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
 		order = LegInfo{
-			price:     putData.Data[idx].High + 0.5,
+			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
 			orderType: "BUY",
 			token:     putToken,
 			symbol:    putSymbol,
-			quantity:  2,
+			quantity:  1,
 		}
 
 	}

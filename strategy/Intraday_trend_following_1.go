@@ -192,7 +192,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	sma8 := data.Indicators["sma"+"8"][idx]
 	sma13 := data.Indicators["sma"+"13"][idx]
 	sma21 := data.Indicators["sma"+"21"][idx]
-	ema8 := data.Indicators["ema"+"21"][idx]
+	ema8 := data.Indicators["ema"+"8"][idx]
 	rsi := data.Indicators["rsi"+"14"]
 	adx14 := data.Adx["Adx"+"14"]
 	rsiAvg3 := getAvg(rsi, 3)
@@ -284,12 +284,12 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 		}
 
 		totalPL := 0.0
-		fmt.Printf("\n*************** Positions ************** \n")
+		//fmt.Printf("\n*************** Positions ************** \n")
 
 		for _, postion := range positions {
 			if isPrint {
 				fmt.Printf("\nposition for %v is %v\n", postion, userName)
-
+				isPrint = false
 			}
 			if postion.SymbolToken == niftyToken || postion.SymbolToken == bankNiftyToken {
 				continue
@@ -317,7 +317,7 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 			}
 			totalPL += val
 		}
-		isPrint = false
+
 		if isAnyPostionOpen == false {
 			if totalPL <= -1000.0 || totalPL >= 2000.0 {
 				ForceCloseSession(client)
