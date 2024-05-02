@@ -85,8 +85,17 @@ func (h *Handler) starter() {
 						" error ", err)
 					continue
 				}
-
 				fmt.Println("response from auto intra-day api ", string(resp))
+
+				if creds.clientCode == "P51284799" {
+					resp, err = post(host, "/option", data)
+					if err != nil {
+						fmt.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
+							" error ", err)
+						continue
+					}
+					fmt.Println("response from auto option api ", string(resp))
+				}
 			}
 		}
 	}

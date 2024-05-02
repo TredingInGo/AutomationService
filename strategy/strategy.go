@@ -25,6 +25,8 @@ const (
 	nfo              = "NFO"
 	niftyLotSize     = 25
 	bankNiftyLotSize = 15
+	bankExpairy      = "08MAY24"
+	niftyExpairy     = "09MAY24"
 )
 
 var (
@@ -71,10 +73,20 @@ func New() strategy {
 		chForCandle: make(chan *models.SnapQuote, 100),
 	}
 }
-
-func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, client *smartapigo.Client) {
-
+func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) {
 	maxTrade := 2
+	for {
+		isClosed := CloseSession(client)
+		if isClosed || maxTrade == 0 {
+			fmt.Printf("Todays Session Closed")
+			return
+		}
+		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
+		s.ExecuteAlgo(ltp, bankExpairy, "BANKNIFTY", client, &maxTrade)
+	}
+}
+func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string, client *smartapigo.Client, maxTrade *int) {
+
 	index = strings.ToUpper(index)
 	expiry = strings.ToUpper(expiry)
 	userProfile, _ := client.GetUserProfile()
@@ -84,100 +96,97 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, expiry, index string, clien
 	} else if index == "BANKNIFTY" {
 		token = bankNiftyToken
 	}
-	for {
-		candles, ATMstrike := getATMStrike(client, index)
-		if len(candles) <= 100 || maxTrade == 0 {
+	candles, ATMstrike := getATMStrike(client, index)
+	if len(candles) <= 100 || *maxTrade == 0 {
+		return
+	}
+	var ITMStrike int
+	if index == "NIFTY" {
+		ITMStrike = nifty * 2
+	} else if index == "BANKNIFTY" {
+		ITMStrike = bankNifty * 2
+	}
+	callSpot := ATMstrike - float64(ITMStrike)
+	callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
+	callToken := GetFOToken(callSymbol, nfo)
+	callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
+	if len(callSideITMTick) <= 100 {
+		return
+	}
+
+	putSpot := ATMstrike + float64(ITMStrike)
+	putSymbol := index + expiry + strconv.Itoa(int(putSpot)) + put
+	putToken := GetFOToken(putSymbol, nfo)
+	putSideITMTick := GetStockTick(client, putToken, "FIVE_MINUTE", nfo)
+	if len(putSideITMTick) <= 100 {
+		return
+	}
+
+	indexDataWithIndicators := &DataWithIndicators{
+		Data:     candles,
+		Token:    token,
+		UserName: userProfile.UserName,
+	}
+	callDataWithIndicators := &DataWithIndicators{
+		Data:     callSideITMTick,
+		Token:    callToken,
+		UserName: userProfile.UserName,
+	}
+	putDataWithIndicators := &DataWithIndicators{
+		Data:     putSideITMTick,
+		Token:    putToken,
+		UserName: userProfile.UserName,
+	}
+
+	PopulateIndicators(indexDataWithIndicators)
+	PopulateIndicators(callDataWithIndicators)
+	PopulateIndicators(putDataWithIndicators)
+	order := TrendFollowingRsiForFO(indexDataWithIndicators, callDataWithIndicators, putDataWithIndicators, callToken, putToken, callSymbol, putSymbol, userProfile.UserName, client, int(callSpot), int(putSpot))
+	fmt.Println(order)
+	if order.orderType == "None" || order.quantity < 1 {
+		return
+	}
+
+	var orderInfo ORDER
+	var placedToken string
+	if order.orderType == "BUY" {
+		orderInfo = getFOOrderInfo(index, order)
+		placedToken = callToken
+	}
+
+	if order.orderType == "SELL" {
+		orderInfo = getFOOrderInfo(index, order)
+		placedToken = putToken
+	}
+
+	orderParams := getFOOrderParams(orderInfo)
+	slOrder, isOrderPlaced := placeFOOrder(client, orderParams)
+	if isOrderPlaced == false {
+		return
+	}
+	*maxTrade--
+	var tokenInfo []models.TokenInfo
+	tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, placedToken})
+	sl := orderInfo.Sl
+	price := orderInfo.Spot
+	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
+	for data := range s.LiveData {
+		LTP := float64(data.LastTradedPrice / 100)
+		slPrice, err := strconv.ParseFloat(slOrder.Price, 64)
+		if err != nil {
 			continue
 		}
-		var ITMStrike int
-		if index == "NIFTY" {
-			ITMStrike = nifty * 2
-		} else if index == "BANKNIFTY" {
-			ITMStrike = bankNifty * 2
-		}
-		callSpot := ATMstrike - float64(ITMStrike)
-		callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
-		callToken := GetFOToken(callSymbol, nfo)
-		callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
-		if len(callSideITMTick) <= 100 {
-			continue
-		}
+		if LTP > price-float64(sl)+20 {
 
-		putSpot := ATMstrike + float64(ITMStrike)
-		putSymbol := index + expiry + strconv.Itoa(int(putSpot)) + put
-		putToken := GetFOToken(putSymbol, nfo)
-		putSideITMTick := GetStockTick(client, putToken, "FIVE_MINUTE", nfo)
-		if len(putSideITMTick) <= 100 {
-			continue
+			sl = sl + 10
+			stopLossPrice := slPrice + float64(sl)
+			modifyOrderParams := getModifyOrderParams(stopLossPrice, orderParams, slOrder.OrderID)
+			orderRes, _ := client.ModifyOrder(modifyOrderParams)
+			fmt.Printf("SL Modified %v", orderRes)
 		}
-
-		indexDataWithIndicators := &DataWithIndicators{
-			Data:     candles,
-			Token:    token,
-			UserName: userProfile.UserName,
+		if LTP <= slPrice {
+			ltp.STOP()
 		}
-		callDataWithIndicators := &DataWithIndicators{
-			Data:     callSideITMTick,
-			Token:    callToken,
-			UserName: userProfile.UserName,
-		}
-		putDataWithIndicators := &DataWithIndicators{
-			Data:     putSideITMTick,
-			Token:    putToken,
-			UserName: userProfile.UserName,
-		}
-
-		PopulateIndicators(indexDataWithIndicators)
-		PopulateIndicators(callDataWithIndicators)
-		PopulateIndicators(putDataWithIndicators)
-		order := TrendFollowingRsiForFO(indexDataWithIndicators, callDataWithIndicators, putDataWithIndicators, callToken, putToken, callSymbol, putSymbol, userProfile.UserName, client, int(callSpot), int(putSpot))
-		fmt.Println(order)
-		if order.orderType == "None" || order.quantity < 1 {
-			continue
-		}
-
-		var orderInfo ORDER
-		var placedToken string
-		if order.orderType == "BUY" {
-			orderInfo = getFOOrderInfo(index, order)
-			placedToken = callToken
-		}
-
-		if order.orderType == "SELL" {
-			orderInfo = getFOOrderInfo(index, order)
-			placedToken = putToken
-		}
-
-		orderParams := getFOOrderParams(orderInfo)
-		slOrder, isOrderPlaced := placeFOOrder(client, orderParams)
-		if isOrderPlaced == false {
-			continue
-		}
-		maxTrade--
-		var tokenInfo []models.TokenInfo
-		tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, placedToken})
-		sl := orderInfo.Sl
-		price := orderInfo.Spot
-		go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
-		for data := range s.LiveData {
-			LTP := float64(data.LastTradedPrice / 100)
-			slPrice, err := strconv.ParseFloat(slOrder.Price, 64)
-			if err != nil {
-				continue
-			}
-			if LTP > price-float64(sl)+20 {
-
-				sl = sl + 10
-				stopLossPrice := slPrice + float64(sl)
-				modifyOrderParams := getModifyOrderParams(stopLossPrice, orderParams, slOrder.OrderID)
-				orderRes, _ := client.ModifyOrder(modifyOrderParams)
-				fmt.Printf("SL Modified %v", orderRes)
-			}
-			if LTP <= slPrice {
-				ltp.STOP()
-			}
-		}
-
 	}
 
 }
@@ -301,13 +310,20 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	callRsi := callData.Indicators["rsi"+"14"][callIdx]
 	putRsi := putData.Indicators["rsi"+"14"][putIdx]
 	putEma8 := putData.Indicators["ema"+"8"][putIdx]
+	indexEma10 := data.Indicators["ema"+"10"][idx]
+	indexEma30 := data.Indicators["ema"+"30"][idx]
+	callEma10 := callData.Indicators["ema"+"10"][callIdx]
+	callEma30 := callData.Indicators["ema"+"30"][callIdx]
+	putEma10 := putData.Indicators["ema"+"10"][putIdx]
+	putEma30 := putData.Indicators["ema"+"30"][putIdx]
 
 	var order LegInfo
 	order.orderType = "None"
 	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
-		order = LegInfo{
+		fmt.Printf("\n Trade taken on Alligator \n")
+		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
 			orderType: "BUY",
@@ -317,7 +333,8 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 		}
 
 	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
-		order = LegInfo{
+		fmt.Printf("\n Trade taken on Alligator \n")
+		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
 			orderType: "BUY",
@@ -326,6 +343,26 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
+	} else if data.Token == niftyToken && indexEma10 > indexEma30 && rsi[idx] > 62 && rsi[idx] < 70 && callEma10 > callEma30 && callRsi > 62 {
+		fmt.Printf("\n Trade taken on CrossOver \n")
+		return LegInfo{
+			price:     callData.Data[callIdx].High + 0.5,
+			strike:    callStrike,
+			orderType: "BUY",
+			token:     callToken,
+			symbol:    callSymbol,
+			quantity:  1,
+		}
+	} else if data.Token == niftyToken && indexEma10 < indexEma30 && rsi[idx] < 40 && rsi[idx] > 30 && putEma10 > putEma30 && putRsi > 62 {
+		fmt.Printf("\n Trade taken on CrossOver \n")
+		return LegInfo{
+			price:     putData.Data[putIdx].High + 0.5,
+			strike:    putStrike,
+			orderType: "BUY",
+			token:     putToken,
+			symbol:    putSymbol,
+			quantity:  1,
+		}
 	}
 
 	return order
