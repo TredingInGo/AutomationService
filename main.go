@@ -280,7 +280,7 @@ func main() {
 		ltp := smartStream.New(clientCode, userSession.Session.FeedToken)
 		strategy := strategy.New()
 
-		strategy.Algo(ltp, param["expiry"], param["index"], userSession.ApiClient)
+		strategy.Algo(ltp, userSession.ApiClient)
 
 	}).Methods(http.MethodPost)
 
