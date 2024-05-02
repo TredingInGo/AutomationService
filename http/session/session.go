@@ -77,5 +77,5 @@ func (s *Session) Session(writer http.ResponseWriter, request *http.Request) {
 
 	successMessage := fmt.Sprintf("User Session Tokens: %v", session.UserSessionTokens)
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(map[string]string{"message": "Connected successfully with angel one", "sessionTokens": successMessage})
+	json.NewEncoder(writer).Encode(map[string]string{"message": "Trading Session Connected successfully with angel one broker", "sessionTokens->": successMessage})
 }
