@@ -295,18 +295,18 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	adxAvg8 := getAvg(adx14.Adx, 8)
 	callEma7 := callData.Indicators["ema"+"7"][callIdx]
 	callEma22 := callData.Indicators["ema"+"22"][callIdx]
-	callEma6 := callData.Indicators["ema"+"6"][callIdx]
+	callEma8 := callData.Indicators["ema"+"8"][callIdx]
 	putEma7 := putData.Indicators["ema"+"7"][putIdx]
 	putEma22 := putData.Indicators["ema"+"22"][putIdx]
 	callRsi := callData.Indicators["rsi"+"14"][callIdx]
 	putRsi := putData.Indicators["rsi"+"14"][putIdx]
-	putEma6 := putData.Indicators["ema"+"6"][putIdx]
+	putEma8 := putData.Indicators["ema"+"8"][putIdx]
 
 	var order LegInfo
 	order.orderType = "None"
 	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if callData.Data[callIdx].Low > callEma6 && data.Data[idx-1].Low > ema8 && callData.Data[callIdx].Close > getVwap(callData.Data, 14) && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
+	if callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
 		order = LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
@@ -316,7 +316,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
-	} else if putData.Data[putIdx].Low > putEma6 && data.Data[idx-1].High < ema8 && putData.Data[putIdx].Close < getVwap(putData.Data, 14) && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
+	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
 		order = LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
