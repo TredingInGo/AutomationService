@@ -173,6 +173,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100)
 		slPrice, err := strconv.ParseFloat(slOrder.Price, 64)
+		target, _ := strconv.ParseFloat(orderParams.SquareOff, 64)
 		if err != nil {
 			continue
 		}
@@ -184,10 +185,13 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 			orderRes, _ := client.ModifyOrder(modifyOrderParams)
 			fmt.Printf("SL Modified %v", orderRes)
 		}
-		if LTP <= slPrice {
+		if LTP <= slPrice || LTP >= target {
+
 			ltp.STOP()
+			fmt.Println("Ltp stopped")
 		}
 	}
+	fmt.Println("Ltp stopped")
 
 }
 
@@ -221,6 +225,7 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 		fmt.Printf("error: %v", err)
 		return smartapigo.Order{}, false
 	}
+	fmt.Printf("\n order res %v", orderRes)
 	orders, _ := client.GetOrderBook()
 	orderDetails := getOrderDetailsByOrderId(orderRes.OrderID, orders)
 	if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
@@ -235,7 +240,11 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 	}
 	fmt.Printf("order placed %v", order)
 	orders, _ = client.GetOrderBook()
+	if orders == nil {
+		return orderDetails, false
+	}
 	slOrder := getSLOrder(orders, order, orderRes.OrderID)
+	fmt.Println("sl order", slOrder)
 	return slOrder, true
 
 }
