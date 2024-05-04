@@ -2,8 +2,8 @@ package intra_day
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/TredingInGo/AutomationService/Simulation"
@@ -39,7 +39,7 @@ func (i *IntraDay) IntraDay(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	if userInfo.Session.FeedToken == "" {
-		fmt.Println("feed token not set")
+		log.Println("feed token not set")
 		return
 	}
 

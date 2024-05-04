@@ -2,8 +2,8 @@ package user
 
 import (
 	"context"
-	"fmt"
 	smartapi "github.com/TredingInGo/smartapi"
+	"log"
 	"sync"
 	"time"
 )
@@ -80,11 +80,11 @@ func (au *activeUsers) RemoveAll() {
 	au.mu.Lock()
 	defer au.mu.Unlock()
 
-	fmt.Println("Removing all user at : ", time.Now().Format("2006-01-02 15:04:05"))
-	fmt.Println("Total user to remove: ", len(au.userInfo))
+	log.Println("Removing all user at : ", time.Now().Format("2006-01-02 15:04:05"))
+	log.Println("Total user to remove: ", len(au.userInfo))
 
 	for k, v := range au.userInfo {
-		fmt.Println("removing: ", k)
+		log.Println("removing: ", k)
 
 		// cancelling the context, so that intra-day will be stopped
 		v.CancelFunc()

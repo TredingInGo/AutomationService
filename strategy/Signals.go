@@ -1,10 +1,10 @@
 package strategy
 
-import "fmt"
+import "log"
 
 func StocBuySignal(k float64, d float64, token string, idx int) bool {
 	if idx > 2000 {
-		fmt.Printf("over 2000")
+		log.Printf("over 2000")
 	}
 	stoValues := sto[token]
 	return stoValues[idx-1].K < k && stoValues[idx].K > k

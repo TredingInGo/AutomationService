@@ -2,9 +2,9 @@ package BackTest
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/TredingInGo/AutomationService/strategy"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"log"
 	"math"
 	"sort"
 	"strconv"
@@ -51,7 +51,7 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 		tradeReport = initTrade()
 		Amount = 100000
 		executeBacktest(client, stockList, rsi, false)
-		fmt.Printf("\n rsi = %v, isEma = false, \n", rsi)
+		log.Printf("\n rsi = %v, isEma = false, \n", rsi)
 		printCurrentTradeReport()
 		if tradeReport.profit > maxProfit.profit {
 			maxProfit = tradeReport
@@ -60,7 +60,7 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 		}
 		Amount = 100000
 		tradeReport = initTrade()
-		fmt.Printf("\n rsi = %v, isEma = true, \n", rsi)
+		log.Printf("\n rsi = %v, isEma = true, \n", rsi)
 		executeBacktest(client, stockList, rsi, true)
 		if tradeReport.profit > maxProfit.profit {
 			maxProfit = tradeReport
@@ -70,9 +70,9 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 		printCurrentTradeReport()
 	}
 
-	fmt.Println("********************|| FINAL TRADE REPORT ||************************")
+	log.Println("********************|| FINAL TRADE REPORT ||************************")
 	tradeReport = maxProfit
-	fmt.Println("Rsi: ", rsiVal, " isEma ", ema)
+	log.Println("Rsi: ", rsiVal, " isEma ", ema)
 	printCurrentTradeReport()
 	//plotGraph(amountChange, trades)
 }
@@ -88,7 +88,7 @@ func populateStockData(stockList []strategy.Symbols, client *smartapigo.Client) 
 		}
 		strategy.PopulateIndicators(&dataWithIndicators)
 		dataWithIndicatorsMap[stock.Symbol] = dataWithIndicators
-		fmt.Println(count, "data Population done for ", stock.Token)
+		log.Println(count, "data Population done for ", stock.Token)
 		count++
 
 	}
@@ -207,7 +207,7 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 		}
 	}
 
-	//fmt.Println("Time to filter stocks ", time.Since(start))
+	//log.Println("Time to filter stocks ", time.Since(start))
 
 	//start = time.Now()
 	for _, stock := range filteredStocks {
@@ -217,7 +217,7 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 		}
 	}
 
-	//fmt.Println("Time to get orders ", time.Since(start))
+	//log.Println("Time to get orders ", time.Since(start))
 
 	return orders
 }
@@ -291,7 +291,7 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 	rsi := data.Indicators["rsi"+strconv.Itoa(rsiPeriod)]
 	var order strategy.ORDER
 	order.OrderType = "None"
-	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
+	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	rsiAvg5 := getAvg(rsi, 3)
 	rsiavg8 := getAvg(rsi, 5)
 	adxAvg5 := getAvg(adx20.Adx, 5)
@@ -302,7 +302,7 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 
 	//high, low := GetDC(data.Data, idx-1)
 
-	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if data.Data[idx].Low > ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 25 && adx20.PlusDi[idx] > adx20.MinusDi[idx] && ma3 > ma5 && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsi[idx] > 55 && rsi[idx] < 65 && rsiAvg5 > rsiavg8 {
 		order = strategy.ORDER{
 			Spot:      data.Data[idx].High + 0.05,
@@ -393,15 +393,15 @@ func initTrade() kpi {
 }
 
 func printCurrentTradeReport() {
-	fmt.Println("********************|| TRADE REPORT ||************************")
-	fmt.Printf("Trade: %v\n", tradeReport.trade)
-	fmt.Printf("Profit: %v\n", tradeReport.profit)
-	fmt.Printf("Loss: %v\n", tradeReport.loss)
-	fmt.Printf("MaxContinousLoss: %v\n", tradeReport.maxContinousloss)
-	fmt.Printf("ProfitCount: %v\n", tradeReport.profitCount)
-	fmt.Printf("LossCount: %v\n", tradeReport.lossCount)
-	fmt.Printf("Amount: %v\n", tradeReport.amount)
-	fmt.Printf("TotalAmount: %v\n", Amount)
+	log.Println("********************|| TRADE REPORT ||************************")
+	log.Printf("Trade: %v\n", tradeReport.trade)
+	log.Printf("Profit: %v\n", tradeReport.profit)
+	log.Printf("Loss: %v\n", tradeReport.loss)
+	log.Printf("MaxContinousLoss: %v\n", tradeReport.maxContinousloss)
+	log.Printf("ProfitCount: %v\n", tradeReport.profitCount)
+	log.Printf("LossCount: %v\n", tradeReport.lossCount)
+	log.Printf("Amount: %v\n", tradeReport.amount)
+	log.Printf("TotalAmount: %v\n", Amount)
 }
 
 func getAvg(data []float64, period int) float64 {

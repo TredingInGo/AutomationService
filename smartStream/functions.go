@@ -1,7 +1,6 @@
 package smartStream
 
 import (
-	"fmt"
 	"github.com/TredingInGo/smartapi/smartstream"
 	"log"
 	"time"
@@ -15,7 +14,7 @@ func MakeCandle(ch <-chan *models.LTPInfo, duration int) {
 	candles := make([]*clients.CandleResponse, 0)
 	//t, err := time.Parse("15:04:05", baseTime)
 	//if err != nil {
-	//	fmt.Println("Error parsing time:", err)
+	//	log.Println("Error parsing time:", err)
 	//	return
 	//}
 
@@ -35,7 +34,7 @@ func MakeCandle(ch <-chan *models.LTPInfo, duration int) {
 				Volume:    0,
 			})
 			tempTime := dataTimeFormatted.Sub(baseTime)
-			fmt.Println("temp time", tempTime)
+			log.Println("temp time", tempTime)
 			tempTimeInSec := tempTime.Seconds()
 			thresHoldTime := (int(tempTimeInSec)) / (duration)
 			thresHoldTime++
@@ -57,7 +56,7 @@ func MakeCandle(ch <-chan *models.LTPInfo, duration int) {
 
 				candles[len(candles)-1] = lastData
 			} else {
-				fmt.Println(candles[len(candles)-1])
+				log.Println(candles[len(candles)-1])
 				candles = append(candles, &clients.CandleResponse{
 					Timestamp: dataTimeFormatted,
 					Open:      float64(data.LastTradedPrice) / 100,
@@ -73,7 +72,7 @@ func MakeCandle(ch <-chan *models.LTPInfo, duration int) {
 	}
 
 	for _, data := range candles {
-		fmt.Println(data)
+		log.Println(data)
 	}
 }
 

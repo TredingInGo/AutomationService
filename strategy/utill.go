@@ -6,6 +6,7 @@ import (
 	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -123,7 +124,7 @@ func (s strategy) getPrevData(token string) {
 			ToDate:      toDate,
 		})
 		if err != nil {
-			fmt.Println("error while getting history data", err)
+			log.Println("error while getting history data", err)
 			continue
 		}
 
@@ -157,7 +158,7 @@ func (s *strategy) fillPastData(symbol string, exhange string, max int) {
 			ToDate:      toDate,
 		})
 		if err != nil {
-			fmt.Println("error while getting history data", err)
+			log.Println("error while getting history data", err)
 			continue
 		}
 
@@ -242,7 +243,7 @@ func trainModel(pastData []smartapigo.CandleResponse, token string) {
 	// Convert the payload to JSON
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
+		log.Println("Error encoding JSON:", err)
 		return
 	}
 
@@ -252,16 +253,16 @@ func trainModel(pastData []smartapigo.CandleResponse, token string) {
 	// Send a POST request to the API
 	resp, err := http.Post(trainingUrl, "application/json", bytes.NewBuffer(payloadJSON))
 	if err != nil {
-		fmt.Println("Error sending POST request:", err)
+		log.Println("Error sending POST request:", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	// Check the response status
 	if resp.StatusCode == http.StatusOK {
-		fmt.Println("API call successful")
+		log.Println("API call successful")
 	} else {
-		fmt.Println("API call failed with status:", resp.Status)
+		log.Println("API call failed with status:", resp.Status)
 	}
 }
 

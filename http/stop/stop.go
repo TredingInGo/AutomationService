@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -48,7 +49,7 @@ func (h *Handler) Stop(writer http.ResponseWriter, request *http.Request) {
 
 	err := json.Unmarshal(body, &mp)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	clientID := mp["clientCode"]

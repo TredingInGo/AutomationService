@@ -107,7 +107,7 @@ package strategy
 //
 //	for data := range s.LiveData {
 //		start := time.Now()
-//		//fmt.Println("Count: ", tokenCount)
+//		//log.Println("Count: ", tokenCount)
 //		tokenCount++
 //		priceMap[tokenMap[data.TokenInfo.Token]] = priceInfo{
 //			price:  float64(data.LastTradedPrice) / 100.0,
@@ -164,10 +164,10 @@ package strategy
 //					}
 //				}
 //			}
-//			fmt.Println("Time to calculate ", time.Since(start))
+//			log.Println("Time to calculate ", time.Since(start))
 //			start = time.Now()
 //			placeFOOrder(maxPL, leg, client, index)
-//			fmt.Println("Time to place order ", time.Since(start))
+//			log.Println("Time to place order ", time.Since(start))
 //		}
 //
 //	}
@@ -230,9 +230,9 @@ package strategy
 //	for spot := ITM; spot <= OTM; spot += spotDiff {
 //		symbol1 := strconv.Itoa(spot) + call
 //		symbol2 := strconv.Itoa(spot) + put
-//		fmt.Println("===============================================")
-//		fmt.Println(" ", priceMap[symbol1], " || ", spot, " || ", priceMap[symbol2])
-//		fmt.Println("===============================================")
+//		log.Println("===============================================")
+//		log.Println(" ", priceMap[symbol1], " || ", spot, " || ", priceMap[symbol2])
+//		log.Println("===============================================")
 //	}
 //
 //}
@@ -259,8 +259,8 @@ package strategy
 //}
 //
 //func placeFOOrder(maxPL float64, leg legs, client *smartapigo.Client, index string) {
-//	fmt.Println("MaxProfit: ", maxPL)
-//	fmt.Println(leg)
+//	log.Println("MaxProfit: ", maxPL)
+//	log.Println(leg)
 //	qty := leg.leg1.quantity / 15.0
 //	if index == "NIFTY" {
 //		qty = leg.leg1.quantity / 25.0
@@ -275,11 +275,11 @@ package strategy
 //			orderRes2, err2 := client.PlaceOrder(order2)
 //			orderRes3, err3 := client.PlaceOrder(order3)
 //			orderRes4, err4 := client.PlaceOrder(order4)
-//			fmt.Println(err1, err2, err3, err4)
-//			fmt.Println("orderID 1: ", orderRes1)
-//			fmt.Println("orderID 2: ", orderRes2)
-//			fmt.Println("orderID 3: ", orderRes3)
-//			fmt.Println("orderID 4: ", orderRes4)
+//			log.Println(err1, err2, err3, err4)
+//			log.Println("orderID 1: ", orderRes1)
+//			log.Println("orderID 2: ", orderRes2)
+//			log.Println("orderID 3: ", orderRes3)
+//			log.Println("orderID 4: ", orderRes4)
 //		}
 //
 //	}

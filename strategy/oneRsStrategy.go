@@ -21,8 +21,8 @@ package strategy
 //	buy := data.BestFiveBuy
 //	sell := data.BestFiveSell
 //	ratio := 0.0
-//	fmt.Printf("Best buy %v", buy)
-//	fmt.Println("Best Sell ", sell)
+//	log.Printf("Best buy %v", buy)
+//	log.Println("Best Sell ", sell)
 //	buySum := 0.0
 //	sellSum := 0.0
 //	for i := 0; i < 5; i++ {
@@ -31,7 +31,7 @@ package strategy
 //
 //	}
 //	ratio = buySum / math.Max(1.0, sellSum)
-//	fmt.Printf("ma = %v, ratio = %v", ma, ratio)
+//	log.Printf("ma = %v, ratio = %v", ma, ratio)
 //	if ma < ltp && ratio > 4 && t.flag == false {
 //		// buy order
 //		t = trade{
@@ -42,7 +42,7 @@ package strategy
 //			orderType: "BUY",
 //			flag:      true,
 //		}
-//		fmt.Printf("Trade %v", t)
+//		log.Printf("Trade %v", t)
 //
 //	}
 //
@@ -57,7 +57,7 @@ package strategy
 //			orderType: "SELL",
 //			flag:      true,
 //		}
-//		fmt.Printf("Trade %v", t)
+//		log.Printf("Trade %v", t)
 //	}
 //}
 //

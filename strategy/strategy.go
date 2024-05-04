@@ -2,11 +2,11 @@ package strategy
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/TredingInGo/AutomationService/historyData"
 	"github.com/TredingInGo/AutomationService/smartStream"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"github.com/TredingInGo/smartapi/models"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -78,7 +78,7 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) 
 	for {
 		isClosed := CloseSession(client)
 		if isClosed || maxTrade == 0 {
-			fmt.Printf("Todays Session Closed")
+			log.Printf("Todays Session Closed")
 			return
 		}
 		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
@@ -142,7 +142,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 	PopulateIndicators(callDataWithIndicators)
 	PopulateIndicators(putDataWithIndicators)
 	order := TrendFollowingRsiForFO(indexDataWithIndicators, callDataWithIndicators, putDataWithIndicators, callToken, putToken, callSymbol, putSymbol, userProfile.UserName, client, int(callSpot), int(putSpot))
-	fmt.Println(order)
+	log.Println(order)
 	if order.orderType == "None" || order.quantity < 1 {
 		return
 	}
@@ -183,15 +183,15 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 			stopLossPrice := slPrice + float64(sl)
 			modifyOrderParams := getModifyOrderParams(stopLossPrice, orderParams, slOrder.OrderID)
 			orderRes, _ := client.ModifyOrder(modifyOrderParams)
-			fmt.Printf("SL Modified %v", orderRes)
+			log.Printf("SL Modified %v", orderRes)
 		}
 		if LTP <= slPrice || LTP >= target {
 
 			ltp.STOP()
-			fmt.Println("Ltp stopped")
+			log.Println("Ltp stopped")
 		}
 	}
-	fmt.Println("Ltp stopped")
+	log.Println("Ltp stopped")
 
 }
 
@@ -222,10 +222,10 @@ func getATMStrike(client *smartapigo.Client, index string) ([]smartapigo.CandleR
 func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smartapigo.Order, bool) {
 	orderRes, err := client.PlaceOrder(order)
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		log.Printf("error: %v", err)
 		return smartapigo.Order{}, false
 	}
-	fmt.Printf("\n order res %v", orderRes)
+	log.Printf("\n order res %v", orderRes)
 	orders, _ := client.GetOrderBook()
 	orderDetails := getOrderDetailsByOrderId(orderRes.OrderID, orders)
 	if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
@@ -234,17 +234,17 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 		orderDetails = getOrderDetailsByOrderId(orderRes.OrderID, orders)
 		if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
 			orderRes, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
-			fmt.Printf("Order Cancelle %v", orderRes)
+			log.Printf("Order Cancelle %v", orderRes)
 			return orderDetails, false
 		}
 	}
-	fmt.Printf("order placed %v", order)
+	log.Printf("order placed %v", order)
 	orders, _ = client.GetOrderBook()
 	if orders == nil {
 		return orderDetails, false
 	}
 	slOrder := getSLOrder(orders, order, orderRes.OrderID)
-	fmt.Println("sl order", slOrder)
+	log.Println("sl order", slOrder)
 	return slOrder, true
 
 }
@@ -281,7 +281,7 @@ func getFOOrderInfo(index string, order LegInfo) ORDER {
 		tp = 120
 		lotSize = bankNiftyLotSize
 	}
-	fmt.Printf("\nlot size %v \n", lotSize)
+	log.Printf("\nlot size %v \n", lotSize)
 	orderParam := ORDER{
 		Spot:      order.price,
 		Sl:        sl,
@@ -328,10 +328,10 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 
 	var order LegInfo
 	order.orderType = "None"
-	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
+	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
-		fmt.Printf("\n Trade taken on Alligator \n")
+		log.Printf("\n Trade taken on Alligator \n")
 		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
@@ -342,7 +342,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 		}
 
 	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
-		fmt.Printf("\n Trade taken on Alligator \n")
+		log.Printf("\n Trade taken on Alligator \n")
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
@@ -353,7 +353,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 		}
 
 	} else if data.Token == niftyToken && indexEma10 > indexEma30 && rsi[idx] > 62 && rsi[idx] < 70 && callEma10 > callEma30 && callRsi > 62 {
-		fmt.Printf("\n Trade taken on CrossOver \n")
+		log.Printf("\n Trade taken on CrossOver \n")
 		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
@@ -363,7 +363,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 	} else if data.Token == niftyToken && indexEma10 < indexEma30 && rsi[idx] < 40 && rsi[idx] > 30 && putEma10 > putEma30 && putRsi > 62 {
-		fmt.Printf("\n Trade taken on CrossOver \n")
+		log.Printf("\n Trade taken on CrossOver \n")
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,

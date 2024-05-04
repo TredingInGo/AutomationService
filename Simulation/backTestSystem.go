@@ -27,7 +27,7 @@ package Simulation
 //	//strategy.PopulateIndicators(data, token)
 //	strategy.SetAmount(100000)
 //	values := strategy.HeikinAshi[token][len(strategy.HeikinAshi[token])-50:]
-//	fmt.Printf("%v", values)
+//	log.Printf("%v", values)
 //	high := strategy.GetHighPriceArray(data)
 //	low := strategy.GetLowPriceArray(data)
 //	strategy.CalculateEma(high, 44)
@@ -73,10 +73,10 @@ package Simulation
 //				best.sma2 = sma2
 //
 //			}
-//			fmt.Printf("SMA1 %v SMA2 %v ---- \n KPI %v\n", sma1, sma2, tradeReport)
+//			log.Printf("SMA1 %v SMA2 %v ---- \n KPI %v\n", sma1, sma2, tradeReport)
 //		}
 //	}
-//	fmt.Printf("SMA1 %v SMA2 %v ---- \n KPI %v\n", best.sma1, best.sma2, maxProfit)
+//	log.Printf("SMA1 %v SMA2 %v ---- \n KPI %v\n", best.sma1, best.sma2, maxProfit)
 //
 //}
 //func initTrade() kpi {

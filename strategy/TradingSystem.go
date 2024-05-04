@@ -32,7 +32,7 @@ package strategy
 //	var order ORDER
 //
 //	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma3 > sma5 && sma5 > sma8 && sma8 > sma[token+"13"][idx] && sma[token+"13"][idx] > sma[token+"21"][idx] && rsi[idx] < 75 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] {
-//		fmt.Printf("order placed: trend following adx = %v \n", adx14.Adx[idx])
+//		log.Printf("order placed: trend following adx = %v \n", adx14.Adx[idx])
 //		order = ORDER{
 //			Spot:      data[idx].High + 0.05,
 //			Sl:        int(math.Max(data[idx].High*0.005, 1.0)),
@@ -41,7 +41,7 @@ package strategy
 //			OrderType: "BUY",
 //		}
 //	} else if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma3 < sma5 && sma5 < sma8 && sma8 < sma[token+"13"][idx] && sma[token+"13"][idx] < sma[token+"21"][idx] && rsi[idx] < 40 && rsi[idx] > 30 && rsi[idx-2] > rsi[idx] {
-//		fmt.Printf("order placed: trend following %v\n", adx14.Adx[idx])
+//		log.Printf("order placed: trend following %v\n", adx14.Adx[idx])
 //		order = ORDER{
 //			Spot:      data[idx].Low - 0.05,
 //			Sl:        int(math.Max(data[idx].High*0.005, 1.0)),
@@ -74,7 +74,7 @@ package strategy
 //
 //func LstmPlusStochStratgy(candles []smartapigo.CandleResponse, k, d float64, atr float64, token string) {
 //	predictions := GetDirections(candles, token+"-5LSTM")
-//	//fmt.Printf("close: %v,  k: %v, d: %v, atr: %v, prediction: %v", candles[len(candles)-1].Close, k, d, atr, predictions[len(predictions)-1])
+//	//log.Printf("close: %v,  k: %v, d: %v, atr: %v, prediction: %v", candles[len(candles)-1].Close, k, d, atr, predictions[len(predictions)-1])
 //	if predictions[len(predictions)-1] > 0.7 && k < 30 && d < 20 && atr > 2.5 {
 //		KPI.trade++
 //		price := candles[len(candles)-1].Close
@@ -117,7 +117,7 @@ package strategy
 //			KPI.profitCount++
 //			order.flag = false
 //			count = 0.0
-//			fmt.Println(KPI)
+//			log.Println(KPI)
 //			return
 //		}
 //		if ltp <= order.sl {
@@ -126,7 +126,7 @@ package strategy
 //			order.flag = false
 //			count++
 //			KPI.maxContinousloss = math.Max(KPI.maxContinousloss, count)
-//			fmt.Println(KPI)
+//			log.Println(KPI)
 //			return
 //		}
 //	}
@@ -136,7 +136,7 @@ package strategy
 //			KPI.profitCount++
 //			order.flag = false
 //			count = 0.0
-//			fmt.Println(KPI)
+//			log.Println(KPI)
 //			return
 //		}
 //		if ltp >= order.sl {
@@ -145,7 +145,7 @@ package strategy
 //			order.flag = false
 //			count++
 //			KPI.maxContinousloss = math.Max(KPI.maxContinousloss, count)
-//			fmt.Println(KPI)
+//			log.Println(KPI)
 //			return
 //		}
 //	}

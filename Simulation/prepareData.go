@@ -2,9 +2,9 @@ package Simulation
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/TredingInGo/AutomationService/strategy"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"log"
 	"strings"
 	"time"
 )
@@ -32,7 +32,7 @@ func PrepareData(db *sql.DB, client *smartapigo.Client, token string, timeFrame,
 			VALUES ($1, $2)`
 		_, err := db.Exec(query, symbolToken, symbol)
 		if err != nil {
-			fmt.Println("Error executing INSERT query:", err)
+			log.Println("Error executing INSERT query:", err)
 			return
 		}
 	}
@@ -56,7 +56,7 @@ func PrepareData(db *sql.DB, client *smartapigo.Client, token string, timeFrame,
 	//	)
 	//
 	//	if err != nil {
-	//		fmt.Println("Error executing INSERT query:", err)
+	//		log.Println("Error executing INSERT query:", err)
 	//		return
 	//	}
 	//}
@@ -70,7 +70,7 @@ func CollectData(db *sql.DB, client *smartapigo.Client) {
 		Symbols := strings.Split(stocks[i].Symbol, "-")
 		token := strategy.GetToken(Symbols[0], "NSE")
 		stockName := strategy.GetStockName(token)
-		fmt.Printf("stock name = %v ", stockName)
+		log.Printf("stock name = %v ", stockName)
 		PrepareData(db, client, token, "ONE_DAY", stocks[i].Symbol)
 	}
 }

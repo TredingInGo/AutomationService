@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/TredingInGo/AutomationService/Simulation"
 	"github.com/TredingInGo/AutomationService/historyData"
 	intra_day "github.com/TredingInGo/AutomationService/http/intra-day"
@@ -17,6 +16,7 @@ import (
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -38,7 +38,7 @@ type clientSession struct {
 }
 
 func main() {
-	fmt.Println("Starting the server, time: ", time.Now())
+	log.Println("Starting the server, time: ", time.Now())
 	mutex := sync.Mutex{}
 
 	defer func() {
@@ -61,7 +61,7 @@ func main() {
 
 	r.HandleFunc("/ping", func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusOK)
-		fmt.Println("Ping Received")
+		log.Println("Ping Received")
 	}).Methods(http.MethodGet)
 
 	r.HandleFunc("/movie", func(writer http.ResponseWriter, request *http.Request) {
@@ -98,10 +98,10 @@ func main() {
 		})
 		if err != nil {
 
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 		}
 
-		fmt.Println(data)
+		log.Println(data)
 
 		b, _ := json.Marshal(data)
 		writer.Write(b)
@@ -127,7 +127,7 @@ func main() {
 			return
 		}
 		if userSession.session.FeedToken == "" {
-			fmt.Println("feed token not set")
+			log.Println("feed token not set")
 			return
 		}
 		db := Simulation.Connect()
@@ -136,7 +136,7 @@ func main() {
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			writer.Write([]byte("Error marshalling response"))
-			fmt.Println("Error marshalling response:", err)
+			log.Println("Error marshalling response:", err)
 			return
 		}
 		writer.Header().Set("Content-Type", "application/json")
@@ -163,7 +163,7 @@ func main() {
 			return
 		}
 		if userSession.session.FeedToken == "" {
-			fmt.Println("feed token not set")
+			log.Println("feed token not set")
 			return
 		}
 		db := Simulation.Connect()
@@ -171,7 +171,7 @@ func main() {
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			writer.Write([]byte("Error marshalling response"))
-			fmt.Println("Error marshalling response:", err)
+			log.Println("Error marshalling response:", err)
 			return
 		}
 		writer.Header().Set("Content-Type", "application/json")
@@ -205,23 +205,23 @@ func main() {
 		//Renew User Tokens using refresh token
 		session.UserSessionTokens, err = apiClient.RenewAccessToken(session.RefreshToken)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			return
 		}
 
-		fmt.Println("User Session Tokens :- ", session.UserSessionTokens)
+		log.Println("User Session Tokens :- ", session.UserSessionTokens)
 	}).Methods(http.MethodGet)
 
 	r.HandleFunc("/profile", func(writer http.ResponseWriter, request *http.Request) {
 		// Get User Profile
 		//profile, err := apiClient.GetUserProfile()
 		//if err != nil {
-		//	fmt.Println(err.Error())
+		//	log.Println(err.Error())
 		//	return
 		//}
 		//
-		//fmt.Println("User Profile :- ", session.UserProfile)
-		//fmt.Println("User Session Object :- ", session)
+		//log.Println("User Profile :- ", session.UserProfile)
+		//log.Println("User Session Object :- ", session)
 
 	})
 
@@ -243,11 +243,11 @@ func main() {
 		//})
 		//
 		//if err != nil {
-		//	fmt.Println(err.Error())
+		//	log.Println(err.Error())
 		//	return
 		//}
 		//
-		//fmt.Println("Placed Order ID and Script :- ", order)
+		//log.Println("Placed Order ID and Script :- ", order)
 	})
 
 	r.HandleFunc("/option", func(writer http.ResponseWriter, request *http.Request) {
@@ -273,7 +273,7 @@ func main() {
 		}
 
 		if userSession.Session.FeedToken == "" {
-			fmt.Println("feed token not set")
+			log.Println("feed token not set")
 			return
 		}
 
