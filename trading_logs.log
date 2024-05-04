@@ -1,2 +1,7 @@
-2024/05/04 16:44:46 This is a log entry
-2024/05/04 16:44:46 Starting the server, time:  2024-05-04 16:44:46.025184 +0530 IST m=+0.002982001
+2024/05/04 17:12:12 This is a log entry
+2024/05/04 17:12:12 Starting the server, time:  2024-05-04 17:12:12.622028 +0530 IST m=+0.003749584
+2024/05/04 17:16:25 Current TOTP for PV5J747OQSTMGEN2NVYSH7IRYM = : 958284
+2024/05/04 17:16:35 Successfully connected to the PostgreSQL database!
+2024/05/04 17:16:37 total P/L  0
+2024/05/04 17:16:38 Session closed  for 
+2024/05/04 17:16:38 Todays Session Closed
