@@ -15,6 +15,7 @@ import (
 	"github.com/TredingInGo/AutomationService/user"
 	smartapi "github.com/TredingInGo/smartapi"
 	"github.com/gorilla/mux"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -39,12 +40,13 @@ type clientSession struct {
 
 func main() {
 
-	logFile, err := os.OpenFile("trading_logs.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	logFile, err := os.OpenFile("trading_logs.log", os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.SetOutput(logFile)
+	defer logFile.Close()
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(multiWriter)
 
 	log.Println("This is a log entry")
 
