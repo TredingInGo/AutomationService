@@ -76,11 +76,11 @@ func New() strategy {
 func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) {
 	maxTrade := 2
 	for {
-		isClosed := CloseSession(client)
-		if isClosed || maxTrade == 0 {
-			log.Printf("Todays Session Closed")
-			return
-		}
+		//isClosed := CloseSession(client)
+		//if isClosed || maxTrade == 0 {
+		//	log.Printf("Todays Session Closed")
+		//	//return
+		//}
 		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
 		s.ExecuteAlgo(ltp, bankExpairy, "BANKNIFTY", client, &maxTrade)
 	}
@@ -341,7 +341,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
-	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
+	} else if true || putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && sma5 < sma8 && sma8 < sma13 && sma21 > sma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
 		log.Printf("\n Trade taken on Alligator \n")
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,

@@ -40,7 +40,7 @@ type clientSession struct {
 
 func main() {
 
-	logFile, err := os.OpenFile("trading_logs.log", os.O_WRONLY|os.O_TRUNC, 0666)
+	logFile, err := os.OpenFile("trading_logs.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
