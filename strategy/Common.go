@@ -92,7 +92,7 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 			FromDate:    fromDate,
 			ToDate:      toDate,
 		})
-		if err != nil {
+		if err == nil {
 			return tempHistoryData
 		}
 
