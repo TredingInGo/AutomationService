@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"log"
 	"math/rand"
@@ -22,9 +21,9 @@ func getPridectedData(ohlcData []smartapigo.CandleResponse, model *ARIMAModel, n
 	if err != nil {
 		log.Fatal("ARIMA forecasting error:", err)
 	}
-	fmt.Println("Forecasted High Prices for the Next", numPeriods, "Periods:")
+	log.Println("Forecasted High Prices for the Next", numPeriods, "Periods:")
 	for i, price := range forecastedHigh {
-		fmt.Printf("Period %d: %.2f\n", i+1, price)
+		log.Printf("Period %d: %.2f\n", i+1, price)
 	}
 	return forecastedHigh
 }

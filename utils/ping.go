@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -29,6 +28,6 @@ func SendPing() {
 		if err != nil {
 			log.Fatalf("Error occurred while reading the response body: %s", err.Error())
 		}
-		fmt.Println("API Response:", string(body))
+		log.Println("API Response:", string(body))
 	}
 }

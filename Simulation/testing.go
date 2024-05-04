@@ -2,7 +2,6 @@ package Simulation
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	_ "github.com/lib/pq"
@@ -29,6 +28,6 @@ func Connect() *sql.DB {
 		log.Fatalf("Error pinging the database: %v", err)
 	}
 
-	fmt.Println("Successfully connected to the PostgreSQL database!")
+	log.Println("Successfully connected to the PostgreSQL database!")
 	return db
 }

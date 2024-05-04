@@ -60,7 +60,7 @@ func makePrediction(modelName string, data [][][]float64) ([][]float64, error) {
 		return nil, fmt.Errorf("received non-200 response: %d", resp.StatusCode())
 	}
 
-	//fmt.Println("Raw response:", string(resp.Body()))
+	//log.Println("Raw response:", string(resp.Body()))
 
 	var response [][]float64
 	if err := json.Unmarshal(resp.Body(), &response); err != nil {
@@ -95,7 +95,7 @@ func GetDirections(data []smartapigo.CandleResponse, stockName string) []float64
 		log.Fatal(err)
 	}
 
-	//fmt.Println("Predictions:", predictions)
+	//log.Println("Predictions:", predictions)
 	var predictionArray []float64
 	for i := 0; i < len(predictions); i++ {
 		predictionArray = append(predictionArray, predictions[i][0])

@@ -2,8 +2,8 @@ package strategy
 
 import (
 	"database/sql"
-	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"log"
 	"math"
 	"sort"
 	"strconv"
@@ -22,7 +22,7 @@ type StockResponse struct {
 
 func SwingScreener(client *smartapigo.Client, db *sql.DB) []StockResponse {
 	stockList := LoadStockListForSwing(db)
-	fmt.Printf("*************** LIST FOR SWING TRADING *****************")
+	log.Printf("*************** LIST FOR SWING TRADING *****************")
 	var swingStocks []StockResponse
 	var timeFrames = []string{"ONE_HOUR"}
 	for _, timeFrame := range timeFrames {
@@ -35,7 +35,7 @@ func SwingScreener(client *smartapigo.Client, db *sql.DB) []StockResponse {
 
 		}
 	}
-	fmt.Printf("Screener Completed")
+	log.Printf("Screener Completed")
 	sort.Slice(swingStocks, func(i, j int) bool {
 		return swingStocks[i].Score > swingStocks[j].Score
 	})
@@ -73,14 +73,14 @@ func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client, timeF
 
 	orderParams := SetOrderParamsForSwing(order, stockToken, symbol)
 	countStock := 1
-	fmt.Printf("\n                   STOCK No: %v                        \n", countStock)
-	fmt.Printf("\n=========================================================\n")
-	fmt.Printf("\nSTOCK NAME -  %v\n", symbol)
-	fmt.Printf("SPOT PRICE - %v\n", order.Spot)
-	fmt.Printf("STOP LOSS -  %v\n", order.Sl)
-	fmt.Printf("TARGET -      %v\n\n", order.Tp)
-	fmt.Printf("Order Params -      %v\n\n", orderParams)
-	fmt.Printf("\n=========================================================\n\n")
+	log.Printf("\n                   STOCK No: %v                        \n", countStock)
+	log.Printf("\n=========================================================\n")
+	log.Printf("\nSTOCK NAME -  %v\n", symbol)
+	log.Printf("SPOT PRICE - %v\n", order.Spot)
+	log.Printf("STOP LOSS -  %v\n", order.Sl)
+	log.Printf("TARGET -      %v\n\n", order.Tp)
+	log.Printf("Order Params -      %v\n\n", orderParams)
+	log.Printf("\n=========================================================\n\n")
 	countStock++
 
 	return &response
@@ -96,8 +96,8 @@ func TrendFollowingRsiForSwing(data *DataWithIndicators, token, symbol, username
 	rsi := data.Indicators["rsi"+"14"]
 	var order ORDER
 	order.OrderType = "None"
-	fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
+	log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,

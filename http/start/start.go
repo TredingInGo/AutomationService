@@ -3,8 +3,8 @@ package start
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -42,13 +42,13 @@ func (h *Handler) starter() {
 	for t := range ticker.C {
 		if t.Hour() == 10 && t.Minute() == 0 || isTestMode {
 			startTime := time.Now().Format("2006-01-02 15:04:05")
-			fmt.Println("Running starter at: ", startTime)
+			log.Println("Running starter at: ", startTime)
 
 			for _, creds := range h.list {
 				// check if intra-day is already running
 				user, exists := h.activeUsers.Get(creds.clientCode)
 				if exists && user.IsIntraDayRunning {
-					fmt.Println("Intra-day already running for user: ", creds.clientCode)
+					log.Println("Intra-day already running for user: ", creds.clientCode)
 
 					continue
 				}
@@ -67,12 +67,12 @@ func (h *Handler) starter() {
 
 				resp, err := post(host, "/session", data)
 				if err != nil {
-					fmt.Println("Error while creating session automatically for clientID ", creds.clientCode,
+					log.Println("Error while creating session automatically for clientID ", creds.clientCode,
 						" error ", err)
 					continue
 				}
 
-				fmt.Println("response from auto session api ", string(resp))
+				log.Println("response from auto session api ", string(resp))
 
 				// start intra-day
 				data = map[string]interface{}{
@@ -81,20 +81,20 @@ func (h *Handler) starter() {
 
 				resp, err = post(host, "/intra-day", data)
 				if err != nil {
-					fmt.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
+					log.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
 						" error ", err)
 					continue
 				}
-				fmt.Println("response from auto intra-day api ", string(resp))
+				log.Println("response from auto intra-day api ", string(resp))
 
 				if creds.clientCode == "P51284799" {
 					resp, err = post(host, "/option", data)
 					if err != nil {
-						fmt.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
+						log.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
 							" error ", err)
 						continue
 					}
-					fmt.Println("response from auto option api ", string(resp))
+					log.Println("response from auto option api ", string(resp))
 				}
 			}
 		}

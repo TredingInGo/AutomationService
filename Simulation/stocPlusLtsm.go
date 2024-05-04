@@ -71,15 +71,15 @@ package Simulation
 //							bestResult = result
 //						}
 //
-//						fmt.Printf("Params: %+v, Result: %+v\n", params, result)
+//						log.Printf("Params: %+v, Result: %+v\n", params, result)
 //					}
 //				}
 //			}
 //		}
 //	}
 //
-//	fmt.Println("Best Parameters:")
-//	fmt.Printf("Params: %+v, Result: %+v\n", bestParams, bestResult)
+//	log.Println("Best Parameters:")
+//	log.Printf("Params: %+v, Result: %+v\n", bestParams, bestResult)
 //}
 //
 //func Ltsm(data []smartapigo.CandleResponse, params Params) Result {

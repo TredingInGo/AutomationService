@@ -2,8 +2,8 @@ package strategy
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -82,22 +82,22 @@ func PopuletInstrumentsList() {
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
-		fmt.Println("Error creating the request:", err)
+		log.Println("Error creating the request:", err)
 		return
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error sending the request:", err)
+		log.Println("Error sending the request:", err)
 		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error reading the response:", err)
+		log.Println("Error reading the response:", err)
 		return
 	}
 
 	if err := json.Unmarshal([]byte(body), &InstrumentLists); err != nil {
-		fmt.Println("Error unmarshaling JSON:", err)
+		log.Println("Error unmarshaling JSON:", err)
 		return
 	}
 }

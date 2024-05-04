@@ -1,7 +1,7 @@
 package totp
 
 import (
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/pquerna/otp/totp"
@@ -16,11 +16,11 @@ func GetTOPT(clientCode string) string {
 	// Generate a TOTP token using the current time
 	token, err := totp.GenerateCode(secret, time.Now())
 	if err != nil {
-		fmt.Println("Error generating TOTP:", err)
+		log.Println("Error generating TOTP:", err)
 		return ""
 	}
 
-	fmt.Printf("Current TOTP for %v = : %s\n", secret, token)
+	log.Printf("Current TOTP for %v = : %s\n", secret, token)
 
 	return token
 }

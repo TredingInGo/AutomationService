@@ -2,7 +2,6 @@ package Simulation
 
 import (
 	"database/sql"
-	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
 	_ "github.com/lib/pq"
 	"log"
@@ -124,7 +123,7 @@ func SaveTradeReport(trades []tradeReport, db *sql.DB) {
 			log.Fatal(err)
 		}
 
-		//fmt.Printf("Inserted row with ID: %d\n", insertedID)
+		//log.Printf("Inserted row with ID: %d\n", insertedID)
 	}
 }
 func getDataiInCandleResponseFormate(data []OHLC) []smartapigo.CandleResponse {
@@ -135,7 +134,7 @@ func getDataiInCandleResponseFormate(data []OHLC) []smartapigo.CandleResponse {
 	// Parse the date string into a time.Time variable
 	for i := 0; i < dataSize; i++ {
 		dateTime, err := time.Parse(layout, data[i].Timestamp)
-		fmt.Print(err)
+		log.Print(err)
 		dataToTest = append(dataToTest, smartapigo.CandleResponse{
 			Timestamp: dateTime,
 			Open:      data[i].Open,
