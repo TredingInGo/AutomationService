@@ -3,8 +3,8 @@ package strategy
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"log"
 	"math"
 	"strconv"
 	"time"
@@ -55,7 +55,7 @@ func CloseSession(client *smartapigo.Client) bool {
 	userProfile, _ := client.GetUserProfile()
 	if currentTime.After(compareTime) {
 		client.Logout()
-		fmt.Printf("Session closed  for %v", userProfile.UserName)
+		log.Printf("Session closed  for %v", userProfile.UserName)
 		return true
 	}
 	return false
@@ -65,7 +65,7 @@ func CloseSession(client *smartapigo.Client) bool {
 func ForceCloseSession(client *smartapigo.Client) {
 	client.Logout()
 	userProfile, _ := client.GetUserProfile()
-	fmt.Printf("Session closed  for %v", userProfile.UserName)
+	log.Printf("Session closed  for %v", userProfile.UserName)
 }
 
 func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *sql.DB) {
@@ -82,13 +82,13 @@ func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *s
 
 		isClosed := CloseSession(client)
 		if isClosed {
-			fmt.Printf("Todays Session Closed")
+			log.Printf("Todays Session Closed")
 			return
 		}
 
 		select {
 		case <-ctx.Done():
-			fmt.Printf("context cancelled in TrendFollowingStretgy for user: %v\n", userProfile.UserName)
+			log.Printf("context cancelled in TrendFollowingStretgy for user: %v\n", userProfile.UserName)
 			return
 		default:
 		}
@@ -101,12 +101,12 @@ func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *s
 		//})
 		//
 		//for i := 0; i < len(eligibleStocks); i++ {
-		//	fmt.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
+		//	log.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
 		//}
 		//
 		//if len(eligibleStocks) > 0 {
 		//	orderParams := GetOrderParams(eligibleStocks[0])
-		//	PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)
+		//	PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)f
 		//}
 	}
 }
@@ -116,18 +116,18 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 	//orders := []*ORDER{}
 	//start := time.Now()
 
-	fmt.Println("running getEligibleStocks for: ", userName, " at: ", time.Now().Format("2006-01-02 15:04:05"))
+	log.Println("running getEligibleStocks for: ", userName, " at: ", time.Now().Format("2006-01-02 15:04:05"))
 	for _, stock := range stocks {
 		isClosed := CloseSession(client)
 		if isClosed {
-			fmt.Printf("Todays Session Closed")
+			log.Printf("Todays Session Closed")
 			return
 		}
 
 		// check for context done
 		select {
 		case <-ctx.Done():
-			fmt.Printf("Context cancelled for user: %v\n", userName)
+			log.Printf("Context cancelled for user: %v\n", userName)
 			return
 		default:
 
@@ -145,7 +145,7 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 		}
 	}
 
-	//fmt.Println("Time to filter stocks ", time.Since(start))
+	//log.Println("Time to filter stocks ", time.Since(start))
 	//
 	//start = time.Now()
 	//for _, stock := range filteredStocks {
@@ -155,7 +155,7 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 	//	}
 	//}
 	//
-	//fmt.Println("Time to get orders ", time.Since(start))
+	//log.Println("Time to get orders ", time.Since(start))
 	//
 	//return orders
 }
@@ -182,9 +182,9 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 }
 
 func PlaceOrder(ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) {
-	fmt.Printf("\norder params: for %v \n%v\n", userName, orderParams)
+	log.Printf("\norder params: for %v \n%v\n", userName, orderParams)
 	orderRes, _ := client.PlaceOrder(orderParams)
-	fmt.Printf("order response %v for %v", orderRes, userName)
+	log.Printf("order response %v for %v", orderRes, userName)
 	TrackOrders(ctx, client, symbol, userName)
 }
 
@@ -206,8 +206,8 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 	var order ORDER
 	order.OrderType = "None"
-	//fmt.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	//fmt.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
+	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if data.Data[idx-1].Low > ema8 && data.Data[idx].Close > getVwap(data.Data, 14) && volAvg3 > volAvg5 && data.Data[idx].Volume > data.Data[idx-1].Volume && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma21 < sma13 && rsi[idx] > 68 && rsi[idx] < 85 && rsiAvg3 > rsiavg8 {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
@@ -260,7 +260,7 @@ func GetAmount(client *smartapigo.Client) float64 {
 	Amount, err := strconv.ParseFloat(RMS.AvailableCash, 64)
 	amount := Amount
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return amount
 }
@@ -270,7 +270,7 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("context cancelled for user: %v\n", userName)
+			log.Printf("context cancelled for user: %v\n", userName)
 			return
 		default:
 
@@ -286,11 +286,11 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 		}
 
 		totalPL := 0.0
-		//fmt.Printf("\n*************** Positions ************** \n")
+		//log.Printf("\n*************** Positions ************** \n")
 
 		for _, postion := range positions {
 			if isPrint {
-				fmt.Printf("\nposition for %v is %v\n", postion, userName)
+				log.Printf("\nposition for %v is %v\n", postion, userName)
 				isPrint = false
 			}
 			if postion.SymbolToken == niftyToken || postion.SymbolToken == bankNiftyToken {
@@ -307,7 +307,7 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 					isAnyPostionOpen = true
 					continue
 				}
-				fmt.Printf("current P/L in %v symbol is %v", symbol, pl)
+				log.Printf("current P/L in %v symbol is %v", symbol, pl)
 			}
 			if qty != 0 {
 				isAnyPostionOpen = true
@@ -324,7 +324,7 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 			if totalPL <= -1000.0 || totalPL >= 2000.0 {
 				ForceCloseSession(client)
 			}
-			fmt.Printf("total P/L  %v", totalPL)
+			log.Printf("total P/L  %v", totalPL)
 			return
 		}
 
