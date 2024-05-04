@@ -38,6 +38,17 @@ type clientSession struct {
 }
 
 func main() {
+
+	logFile, err := os.OpenFile("trading_logs.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logFile.Close()
+
+	log.SetOutput(logFile)
+
+	log.Println("This is a log entry")
+
 	log.Println("Starting the server, time: ", time.Now())
 	mutex := sync.Mutex{}
 
