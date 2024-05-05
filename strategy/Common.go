@@ -75,7 +75,8 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 	tempTime = tempTime.Add(time.Hour * 24 * -20)
 
 	// set timeout
-	client.SetTimeout(5 * time.Second)
+	client.SetTimeout(4 * time.Second)
+	time.Sleep(334)
 
 	tempHistoryData, err := client.GetCandleData(smartapigo.CandleParams{
 		Exchange:    exchange,
@@ -85,6 +86,9 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 		ToDate:      toDate,
 	})
 	for i := 0; i < 3; i++ {
+		if err == nil {
+			return tempHistoryData
+		}
 		tempHistoryData, err = client.GetCandleData(smartapigo.CandleParams{
 			Exchange:    exchange,
 			SymbolToken: symbolToken,
@@ -92,9 +96,6 @@ func GetStockTick(client *smartapigo.Client, symbolToken string, timeFrame strin
 			FromDate:    fromDate,
 			ToDate:      toDate,
 		})
-		if err == nil {
-			return tempHistoryData
-		}
 
 	}
 
