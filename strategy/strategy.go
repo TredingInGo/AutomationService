@@ -76,11 +76,11 @@ func New() strategy {
 func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) {
 	maxTrade := 2
 	for {
-		//isClosed := CloseSession(client)
-		//if isClosed || maxTrade == 0 {
-		//	log.Printf("Todays Session Closed")
-		//	//return
-		//}
+		isClosed := CloseSession(client)
+		if isClosed || maxTrade == 0 {
+			log.Printf("Todays Session Closed")
+			return
+		}
 		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
 		s.ExecuteAlgo(ltp, bankExpairy, "BANKNIFTY", client, &maxTrade)
 	}
@@ -160,33 +160,44 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 	*maxTrade--
 	var tokenInfo []models.TokenInfo
 	tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, order.token})
-	sl := orderInfo.Sl
+
 	price := orderInfo.Spot
+	trailingStopLoss := price - float64(orderInfo.Sl)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
-	count := 5
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100)
-		slPrice, err := strconv.ParseFloat(slOrder.Price, 64)
-		target, _ := strconv.ParseFloat(orderParams.SquareOff, 64)
+		target, err := strconv.ParseFloat(orderParams.SquareOff, 64)
 		if err != nil {
 			continue
 		}
-		if LTP > price-float64(sl)+20 {
+		if LTP >= price+10.0 {
 
-			sl = sl + 10
-			stopLossPrice := slPrice + float64(sl)
-			modifyOrderParams := getModifyOrderParams(stopLossPrice, orderParams, slOrder.OrderID)
-			orderRes, _ := client.ModifyOrder(modifyOrderParams)
-			log.Printf("SL Modified %v", orderRes)
+			trailingStopLoss += 10
+			price += 10
+			modifyOrderParams := getModifyOrderParams(trailingStopLoss, orderParams, slOrder.OrderID)
+			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
+			for i := 0; i < 3; i++ {
+				if err1 == nil {
+					break
+				}
+				log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
+				orderRes, err1 = client.ModifyOrder(modifyOrderParams)
+			}
+			if err1 != nil {
+				log.Printf("\n Error in modifying SL: %v \n", err1)
+			} else {
+				log.Printf("SL Modified %v", orderRes)
+			}
+
 		}
-		count--
-		if LTP <= slPrice || LTP >= target || count == 0 {
+		if LTP <= trailingStopLoss || LTP >= target {
 
 			ltp.STOP()
 			log.Println("Ltp stopped")
+			break
 		}
 	}
-	log.Println("Ltp stopped")
+	log.Println("LTP Streaming stopped")
 
 }
 
@@ -223,13 +234,13 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 	log.Printf("\n order res %v", orderRes)
 	orders, _ := client.GetOrderBook()
 	orderDetails := getOrderDetailsByOrderId(orderRes.OrderID, orders)
-	if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
+	if orderDetails.OrderStatus != "complete" {
 		time.Sleep(5000)
 		orders, _ = client.GetOrderBook()
 		orderDetails = getOrderDetailsByOrderId(orderRes.OrderID, orders)
 		if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
 			orderRes, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
-			log.Printf("Order Cancelle %v", orderRes)
+			log.Printf("Order Cancelled %v", orderRes)
 			return orderDetails, false
 		}
 	}
@@ -362,9 +373,9 @@ func getOrderDetailsByOrderId(orderId string, orders smartapigo.Orders) smartapi
 
 func getSLOrder(orders smartapigo.Orders, orderParams smartapigo.OrderParams, orderId string) smartapigo.Order {
 	for i := 0; i < len(orders); i++ {
-		sl, _ := strconv.Atoi(orders[i].Price)
-		price, _ := strconv.Atoi(orderParams.Price)
-		if orders[i].SymbolToken == orderParams.SymbolToken && sl < price && orders[i].OrderID != orderId {
+		sl := orders[i].Price
+		price, _ := strconv.ParseFloat(orderParams.Price, 64)
+		if orders[i].SymbolToken == orderParams.SymbolToken && sl < price && orders[i].OrderID > orderId && orders[i].OrderStatus != "complete" {
 			return orders[i]
 		}
 	}
