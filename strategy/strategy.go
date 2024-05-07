@@ -81,8 +81,9 @@ func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) 
 			log.Printf("Todays Session Closed")
 			return
 		}
-		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
 		s.ExecuteAlgo(ltp, bankExpairy, "BANKNIFTY", client, &maxTrade)
+		s.ExecuteAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
+
 	}
 }
 func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string, client *smartapigo.Client, maxTrade *int) {
@@ -163,6 +164,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 	price := orderInfo.Spot
 	trailingStopLoss := price - float64(orderInfo.Sl)
+	log.Println("Trying to connect with token ", tokenInfo)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100)
@@ -171,7 +173,6 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 			continue
 		}
 		if LTP >= price+10.0 {
-
 			trailingStopLoss += 10
 			price += 10
 			modifyOrderParams := getModifyOrderParams(trailingStopLoss, orderParams, slOrder.OrderID)
@@ -191,9 +192,8 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 		}
 		if LTP <= trailingStopLoss || LTP >= target {
-
 			ltp.STOP()
-			log.Println("Ltp stopped")
+			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
 			break
 		}
 	}
@@ -245,6 +245,7 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 		}
 	}
 	log.Printf("order placed %v", order)
+	time.Sleep(1000)
 	orders, _ = client.GetOrderBook()
 	if orders == nil {
 		return orderDetails, false
@@ -337,7 +338,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
 	if callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ema5 > ema8 && ema8 > ema13 && ema21 < ema13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
-		log.Printf("\n CALL Trade taken on Alligator \n")
+		log.Println(" CALL Trade taken on Alligator ")
 		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
@@ -347,8 +348,8 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
-	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && ema5 < ema8 && ema8 < ema13 && ema21 > ema13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 < putEma22 && putRsi > 55 && putRsi <= 70 {
-		log.Printf("\n PUT Trade taken on Alligator \n")
+	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && ema5 < ema8 && ema8 < ema13 && ema21 > ema13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
+		log.Println(" PUT Trade taken on Alligator ")
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
