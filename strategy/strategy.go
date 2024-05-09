@@ -164,14 +164,11 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 	price := orderInfo.Spot
 	trailingStopLoss := price - float64(orderInfo.Sl)
+	target := price + float64(orderInfo.Tp)
 	log.Println("Trying to connect with token ", tokenInfo)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100)
-		target, err := strconv.ParseFloat(orderParams.SquareOff, 64)
-		if err != nil {
-			continue
-		}
 		if LTP >= price+10.0 {
 			trailingStopLoss += 10
 			price += 10
