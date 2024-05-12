@@ -1,17 +1,27 @@
-2024/05/06 19:21:15 This is a log entry
-2024/05/06 19:21:15 Starting the server, time:  2024-05-06 19:21:15.134247 +0530 IST m=+0.001496376
-2024/05/06 19:22:19 Running starter at:  2024-05-06 19:22:16
-2024/05/06 19:22:19 Current TOTP for PV5J747OQSTMGEN2NVYSH7IRYM = : 751775
-2024/05/06 19:22:20 response from auto session api  {"message":"Trading Session Connected successfully with ANGEL ONE!!!!","sessionTokens-\u003e":"User Session Tokens: {eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1MTI4NDc5OSIsInJvbGVzIjowLCJ1c2VydHlwZSI6IlVTRVIiLCJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6VXhNaUlzSW5SNWNDSTZJa3BYVkNKOS5leUp6ZFdJaU9pSlFOVEV5T0RRM09Ua2lMQ0psZUhBaU9qRTNNVFV4TURReU9ERXNJbWxoZENJNk1UY3hOVEF3TXpRNE1Dd2lhblJwSWpvaVlURm1NRFkzTldNdE16UXdPUzAwWWpZekxUaGtOek10Wm1RME5qYzBZalJqT0RreUlpd2liMjF1WlcxaGJtRm5aWEpwWkNJNk9Dd2ljMjkxY21ObGFXUWlPaUl6SWl3aWRYTmxjbDkwZVhCbElqb2lZMnhwWlc1MElpd2lkRzlyWlc1ZmRIbHdaU0k2SW5SeVlXUmxYMkZqWTJWemMxOTBiMnRsYmlJc0ltZHRYMmxrSWpvNExDSnpiM1Z5WTJVaU9pSXpJaXdpWkdWMmFXTmxYMmxrSWpvaVltRXdPVFkwTURBdE9UZzVNUzB6TlRsaExXSTFNV1l0TWpoalptUXlOelprT1RjMklpd2lZV04wSWpwN2ZYMC5ZZmNGb3B0YkdiTjAzWEdQdGNMUUtmRnpGZXd0NFY4Y1NoZHd4VEtoWmVhSTZldG1odjVJQ2FjbXNjX0tFX3BWdGpsQWdhaGJmM2s5NVlTRU9GaXJrdyIsIkFQSS1LRVkiOiJYRG5ieTR1cCIsImlhdCI6MTcxNTAwMzU0MCwiZXhwIjoxNzE1MTA0MjgxfQ.sgulouSHVB_Yw3PxMFjlodXteGyJNnP6UejjV3HeCwNSPAToTwmc9tf7pUp6UvXn3-gX1aXfl3o6QhfS65AvPw eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnpkV0lpT2lKUU5URXlPRFEzT1RraUxDSmxlSEFpT2pFM01UVXdPRGs1TkRBc0ltbGhkQ0k2TVRjeE5UQXdNelE0TUN3aWFuUnBJam9pTWpKbFpHTTJPVFV0TURjNE9DMDBPR1l4TFRsbVlURXROREF6TnpBNE9UYzBaR0l3SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWRHOXJaVzRpT2lKU1JVWlNSVk5JTFZSUFMwVk9JaXdpZFhObGNsOTBlWEJsSWpvaVkyeHBaVzUwSWl3aWRHOXJaVzVmZEhsd1pTSTZJblJ5WVdSbFgzSmxabkpsYzJoZmRHOXJaVzRpTENKa1pYWnBZMlZmYVdRaU9pSmlZVEE1TmpRd01DMDVPRGt4TFRNMU9XRXRZalV4WmkweU9HTm1aREkzTm1RNU56WWlMQ0poWTNRaU9udDlmUS51Mk5Uc1M4VFBBZVBxMkdZSnBqTWNKMHhWXzVKdFhuRW82dzFQNHZDdzMyZXl4VWRYbTljZExXdzhKYkFGZ2VpUk94eExvalBselBEMHRuM1IxcE14ZyIsImlhdCI6MTcxNTAwMzU0MH0.GAHIy2WIlLqu1MdiUkTzsseUzjnBvVvG_AH7K36gpx3Y0iBKqldq5uvmW_AIuIf7Rv8iEZP8yosKAcvpTicqcg eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1MTI4NDc5OSIsImlhdCI6MTcxNTAwMzU0MCwiZXhwIjoxNzE1MDg5OTQwfQ.f5Wf7hhYWYSQZu6eNVkuEGk6u_8rVmD9Y_2l8eUCJ6Q0cqVwReAMJKcfXEEOjiTsDqgB2sWoYNYgTyRLgjaMuQ}"}
-
-2024/05/06 19:22:20 response from auto option api  {"message":"Trading Session Connected successfully with ANGEL ONE!!!!","sessionTokens-\u003e":"User Session Tokens: {eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1MTI4NDc5OSIsInJvbGVzIjowLCJ1c2VydHlwZSI6IlVTRVIiLCJ0b2tlbiI6ImV5SmhiR2NpT2lKSVV6VXhNaUlzSW5SNWNDSTZJa3BYVkNKOS5leUp6ZFdJaU9pSlFOVEV5T0RRM09Ua2lMQ0psZUhBaU9qRTNNVFV4TURReU9ERXNJbWxoZENJNk1UY3hOVEF3TXpRNE1Dd2lhblJwSWpvaVlURm1NRFkzTldNdE16UXdPUzAwWWpZekxUaGtOek10Wm1RME5qYzBZalJqT0RreUlpd2liMjF1WlcxaGJtRm5aWEpwWkNJNk9Dd2ljMjkxY21ObGFXUWlPaUl6SWl3aWRYTmxjbDkwZVhCbElqb2lZMnhwWlc1MElpd2lkRzlyWlc1ZmRIbHdaU0k2SW5SeVlXUmxYMkZqWTJWemMxOTBiMnRsYmlJc0ltZHRYMmxrSWpvNExDSnpiM1Z5WTJVaU9pSXpJaXdpWkdWMmFXTmxYMmxrSWpvaVltRXdPVFkwTURBdE9UZzVNUzB6TlRsaExXSTFNV1l0TWpoalptUXlOelprT1RjMklpd2lZV04wSWpwN2ZYMC5ZZmNGb3B0YkdiTjAzWEdQdGNMUUtmRnpGZXd0NFY4Y1NoZHd4VEtoWmVhSTZldG1odjVJQ2FjbXNjX0tFX3BWdGpsQWdhaGJmM2s5NVlTRU9GaXJrdyIsIkFQSS1LRVkiOiJYRG5ieTR1cCIsImlhdCI6MTcxNTAwMzU0MCwiZXhwIjoxNzE1MTA0MjgxfQ.sgulouSHVB_Yw3PxMFjlodXteGyJNnP6UejjV3HeCwNSPAToTwmc9tf7pUp6UvXn3-gX1aXfl3o6QhfS65AvPw eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnpkV0lpT2lKUU5URXlPRFEzT1RraUxDSmxlSEFpT2pFM01UVXdPRGs1TkRBc0ltbGhkQ0k2TVRjeE5UQXdNelE0TUN3aWFuUnBJam9pTWpKbFpHTTJPVFV0TURjNE9DMDBPR1l4TFRsbVlURXROREF6TnpBNE9UYzBaR0l3SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWRHOXJaVzRpT2lKU1JVWlNSVk5JTFZSUFMwVk9JaXdpZFhObGNsOTBlWEJsSWpvaVkyeHBaVzUwSWl3aWRHOXJaVzVmZEhsd1pTSTZJblJ5WVdSbFgzSmxabkpsYzJoZmRHOXJaVzRpTENKa1pYWnBZMlZmYVdRaU9pSmlZVEE1TmpRd01DMDVPRGt4TFRNMU9XRXRZalV4WmkweU9HTm1aREkzTm1RNU56WWlMQ0poWTNRaU9udDlmUS51Mk5Uc1M4VFBBZVBxMkdZSnBqTWNKMHhWXzVKdFhuRW82dzFQNHZDdzMyZXl4VWRYbTljZExXdzhKYkFGZ2VpUk94eExvalBselBEMHRuM1IxcE14ZyIsImlhdCI6MTcxNTAwMzU0MH0.GAHIy2WIlLqu1MdiUkTzsseUzjnBvVvG_AH7K36gpx3Y0iBKqldq5uvmW_AIuIf7Rv8iEZP8yosKAcvpTicqcg eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1MTI4NDc5OSIsImlhdCI6MTcxNTAwMzU0MCwiZXhwIjoxNzE1MDg5OTQwfQ.f5Wf7hhYWYSQZu6eNVkuEGk6u_8rVmD9Y_2l8eUCJ6Q0cqVwReAMJKcfXEEOjiTsDqgB2sWoYNYgTyRLgjaMuQ}"}
-
-2024/05/06 19:22:21 Session closed  for PRITIBARDHAN JHA
-2024/05/06 19:22:21 Todays Session Closed
-2024/05/06 19:22:22 Successfully connected to the PostgreSQL database!
-2024/05/06 19:22:22 response from auto intra-day api  started for clientID: P51284799
-2024/05/06 19:22:24 
-position for {NFO 46921 BO NIFTY09MAY2422350CE NIFTY OPTIDX 1.00 1.00 1.00 1.00 2 -1 1   5693.75 5950.00 XX 22350.0 CE 09MAY2024 25 0 0 0.00 0.00 227.75 238.00 0.00 256.25 0 5693.75 5950.00 0.00 0.00 227.75 238.00 0.00} is PRITIBARDHAN JHA
-2024/05/06 19:22:24 total P/L  -377.2
-2024/05/06 19:22:24 Session closed  for PRITIBARDHAN JHA
-2024/05/06 19:22:24 Todays Session Closed
+2024/05/13 01:41:11 This is a log entry
+2024/05/13 01:41:11 Starting the server, time:  2024-05-13 01:41:11.386438 +0530 IST m=+0.003502584
+2024/05/13 01:41:17 Current TOTP for PV5J747OQSTMGEN2NVYSH7IRYM = : 948652
+2024/05/13 01:42:01 http: panic serving [::1]:57815: runtime error: invalid memory address or nil pointer dereference
+goroutine 13 [running]:
+net/http.(*conn).serve.func1()
+	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:1854 +0x118
+panic({0x104fe1600, 0x1057e8cf0})
+	/Users/pritibardhanjha/sdk/go1.20.4/src/runtime/panic.go:890 +0x230
+github.com/TredingInGo/AutomationService/strategy.TrendFollowingRsiForFO(0x14000c566d0, 0x14000c56680, 0x14000c56630, {0x14000381518, 0x5}, {0x14000360d68, 0x5}, {0x14000a66b10, 0x17}, {0x14000c0a0d8, ...}, ...)
+	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:345 +0x584
+github.com/TredingInGo/AutomationService/strategy.(*strategy).ExecuteAlgo(0x14000c57388, {0x10505f300, 0x14000c28000}, {0x104f179d2, 0x7}, {0x104f18cb9, 0x9}, 0x140000e9f80, 0x14000c57200)
+	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:145 +0xac8
+github.com/TredingInGo/AutomationService/strategy.(*strategy).Algo(0x14000c57388, {0x10505f300, 0x14000c28000}, 0x140000e9f80)
+	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:84 +0x68
+main.main.func10({0x10505ff50, 0x14000c1c000}, 0x14000c08200)
+	/Users/pritibardhanjha/GolandProjects/AutomationService/main.go:294 +0x360
+net/http.HandlerFunc.ServeHTTP(0x140000c09c0, {0x10505ff50, 0x14000c1c000}, 0x14000c08200)
+	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:2122 +0x44
+github.com/gorilla/mux.(*Router).ServeHTTP(0x14000a6c000, {0x10505ff50, 0x14000c1c000}, 0x14000c08200)
+	/Users/pritibardhanjha/go/pkg/mod/github.com/gorilla/mux@v1.8.0/mux.go:210 +0x258
+net/http.serverHandler.ServeHTTP({0x14000a6e4b0}, {0x10505ff50, 0x14000c1c000}, 0x14000c08000)
+	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:2936 +0x448
+net/http.(*conn).serve(0x140001aa480, {0x105060130, 0x140000c2640})
+	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:1995 +0x154c
+created by net/http.(*Server).Serve
+	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:3089 +0x7ec
