@@ -25,8 +25,8 @@ const (
 	nfo              = "NFO"
 	niftyLotSize     = 25
 	bankNiftyLotSize = 15
-	bankExpairy      = "08MAY24"
-	niftyExpairy     = "09MAY24"
+	bankExpairy      = "15MAY24"
+	niftyExpairy     = "16MAY24"
 )
 
 var (
@@ -74,7 +74,7 @@ func New() strategy {
 	}
 }
 func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) {
-	maxTrade := 2
+	maxTrade := 3
 	for {
 		isClosed := CloseSession(client)
 		if isClosed || maxTrade == 0 {
@@ -164,6 +164,14 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 	price := orderInfo.Spot
 	trailingStopLoss := price - float64(orderInfo.Sl)
+	modifyOrderParams1 := getModifyOrderParams(trailingStopLoss, orderParams, "123456789")
+	orderRes, err1 := client.ModifyOrder(modifyOrderParams1)
+	if err1 != nil {
+		log.Printf("\n Error in modifying SL: %v \n", err1)
+	} else {
+		log.Printf("SL Modified %v", orderRes)
+	}
+
 	target := price + float64(orderInfo.Tp)
 	log.Println("Trying to connect with token ", tokenInfo)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
@@ -278,11 +286,11 @@ func getFOOrderInfo(index string, order LegInfo) ORDER {
 	var lotSize int
 	if index == "NIFTY" {
 		sl = 20
-		tp = 80
+		tp = 60
 		lotSize = niftyLotSize
 	} else if index == "BANKNIFTY" {
 		sl = 30
-		tp = 120
+		tp = 90
 		lotSize = bankNiftyLotSize
 	}
 	log.Printf("\nlot size %v \n", lotSize)
@@ -329,12 +337,12 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	//callEma30 := callData.Indicators["ema"+"30"][callIdx]
 	//putEma10 := putData.Indicators["ema"+"10"][putIdx]
 	//putEma30 := putData.Indicators["ema"+"30"][putIdx]
-
+	firstCandle := GetFirstCandleOfToday(data.Data)
 	var order LegInfo
 	order.orderType = "None"
 	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ema5 > ema8 && ema8 > ema13 && ema21 < ema13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
+	if firstCandle.Open < data.Data[idx].Close-100 && callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ema5 > ema8 && ema8 > ema13 && ema21 < ema13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
 		log.Println(" CALL Trade taken on Alligator ")
 		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
@@ -345,7 +353,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
-	} else if putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && ema5 < ema8 && ema8 < ema13 && ema21 > ema13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
+	} else if firstCandle.Open > data.Data[idx].Close+100 && putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && ema5 < ema8 && ema8 < ema13 && ema21 > ema13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
 		log.Println(" PUT Trade taken on Alligator ")
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
@@ -394,4 +402,23 @@ func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId stri
 		SymbolToken:   order.SymbolToken,
 		Exchange:      nfo,
 	}
+}
+
+func GetFirstCandleOfToday(candles []smartapigo.CandleResponse) *smartapigo.CandleResponse {
+	location, _ := time.LoadLocation("Asia/Kolkata") // Adjust timezone as per the input format
+	today := time.Now().In(location).Format("2006-01-02")
+	var firstCandle *smartapigo.CandleResponse
+
+	// Loop through the slice in reverse order
+	for i := len(candles) - 1; i >= 0; i-- {
+		candle := candles[i]
+		candleDate := candle.Timestamp.Format("2006-01-02")
+		if candleDate == today {
+			if firstCandle == nil || candle.Timestamp.Before(firstCandle.Timestamp) {
+				firstCandle = &candle
+			}
+		}
+	}
+
+	return firstCandle
 }
