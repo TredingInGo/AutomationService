@@ -103,14 +103,14 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 	}
 	var ITMStrike int
 	if index == "NIFTY" {
-		ITMStrike = nifty * 2
+		ITMStrike = nifty * 4
 	} else if index == "BANKNIFTY" {
-		ITMStrike = bankNifty * 2
+		ITMStrike = bankNifty * 4
 	}
 	callSpot := ATMstrike - float64(ITMStrike)
 	callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
 	callToken := GetFOToken(callSymbol, nfo)
-	callSideITMTick := GetStockTick(client, callToken, "ONE_MINUTE", nfo)
+	callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
 	if len(callSideITMTick) <= 100 {
 		return
 	}
@@ -118,7 +118,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 	putSpot := ATMstrike + float64(ITMStrike)
 	putSymbol := index + expiry + strconv.Itoa(int(putSpot)) + put
 	putToken := GetFOToken(putSymbol, nfo)
-	putSideITMTick := GetStockTick(client, putToken, "ONE_MINUTE", nfo)
+	putSideITMTick := GetStockTick(client, putToken, "FIVE_MINUTE", nfo)
 	if len(putSideITMTick) <= 100 {
 		return
 	}
@@ -164,7 +164,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 	price := orderInfo.Spot
 	trailingStopLoss := price - float64(orderInfo.Sl)
-	modifyOrderParams1 := getModifyOrderParams(trailingStopLoss, orderParams, "123456789")
+	modifyOrderParams1 := getModifyOrderParams(trailingStopLoss, orderParams, "240513000723945")
 	orderRes, err1 := client.ModifyOrder(modifyOrderParams1)
 	if err1 != nil {
 		log.Printf("\n Error in modifying SL: %v \n", err1)
@@ -289,8 +289,8 @@ func getFOOrderInfo(index string, order LegInfo) ORDER {
 		tp = 60
 		lotSize = niftyLotSize
 	} else if index == "BANKNIFTY" {
-		sl = 30
-		tp = 90
+		sl = 35
+		tp = 105
 		lotSize = bankNiftyLotSize
 	}
 	log.Printf("\nlot size %v \n", lotSize)
@@ -312,38 +312,17 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 	idx := len(data.Data) - 1
 	callIdx := len(callData.Data) - 1
 	putIdx := len(putData.Data) - 1
-	ema5 := data.Indicators["ema"+"5"][idx]
-	ema8 := data.Indicators["ema"+"8"][idx]
-	ema13 := data.Indicators["ema"+"13"][idx]
-	ema21 := data.Indicators["ema"+"21"][idx]
-	//ema8 := data.Indicators["ema"+"8"][idx]
-	rsi := data.Indicators["rsi"+"10"]
-	adx14 := data.Adx["Adx"+"14"]
-	rsiAvg3 := getAvg(rsi, 3)
-	rsiavg8 := getAvg(rsi, 8)
-	adxAvg3 := getAvg(adx14.Adx, 5)
-	adxAvg8 := getAvg(adx14.Adx, 8)
+	ema10 := data.Indicators["ema"+"10"]
+	ema30 := data.Indicators["ema"+"30"]
 	callEma7 := callData.Indicators["ema"+"7"][callIdx]
 	callEma22 := callData.Indicators["ema"+"22"][callIdx]
-	callEma8 := callData.Indicators["ema"+"8"][callIdx]
 	putEma7 := putData.Indicators["ema"+"7"][putIdx]
 	putEma22 := putData.Indicators["ema"+"22"][putIdx]
-	callRsi := callData.Indicators["rsi"+"14"][callIdx]
-	putRsi := putData.Indicators["rsi"+"14"][putIdx]
-	putEma8 := putData.Indicators["ema"+"8"][putIdx]
-	//indexEma10 := data.Indicators["ema"+"10"][idx]
-	//indexEma30 := data.Indicators["ema"+"30"][idx]
-	//callEma10 := callData.Indicators["ema"+"10"][callIdx]
-	//callEma30 := callData.Indicators["ema"+"30"][callIdx]
-	//putEma10 := putData.Indicators["ema"+"10"][putIdx]
-	//putEma30 := putData.Indicators["ema"+"30"][putIdx]
-	firstCandle := GetFirstCandleOfToday(data.Data)
+	//firstCandle := GetFirstCandleOfToday(data.Data)
 	var order LegInfo
 	order.orderType = "None"
-	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if firstCandle.Open < data.Data[idx].Close-100 && callData.Data[callIdx-1].Low > callEma8 && data.Data[idx-1].Low > ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ema5 > ema8 && ema8 > ema13 && ema21 < ema13 && rsi[idx] > 55 && rsi[idx] < 70 && rsiAvg3 > rsiavg8 && callEma7 > callEma22 && callRsi > 55 && callRsi <= 70 {
-		log.Println(" CALL Trade taken on Alligator ")
+	if ema10[idx] > ema30[idx] && ema10[idx-1] <= ema10[idx-1] && callEma22 < callEma7 {
+		log.Println(" CALL Trade taken on crossover: ema 10 = ", ema10, " ema30 = ", ema30, " callEma22 = ", callEma22, " callEma7 = ", callEma7)
 		return LegInfo{
 			price:     callData.Data[callIdx].High + 0.5,
 			strike:    callStrike,
@@ -353,8 +332,8 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 			quantity:  1,
 		}
 
-	} else if firstCandle.Open > data.Data[idx].Close+100 && putData.Data[putIdx-1].Low > putEma8 && data.Data[idx-1].High < ema8 && adxAvg3 > adxAvg8 && adx14.Adx[idx] >= 20 && adx14.PlusDi[idx] < adx14.MinusDi[idx] && ema5 < ema8 && ema8 < ema13 && ema21 > ema13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg3 < rsiavg8 && putEma7 > putEma22 && putRsi > 55 && putRsi <= 70 {
-		log.Println(" PUT Trade taken on Alligator ")
+	} else if ema10[idx] < ema30[idx] && ema10[idx-1] >= ema10[idx-1] && putEma22 > putEma7 {
+		log.Println(" PUT Trade taken on crossover: ema 10 = ", ema10, " ema30 = ", ema30, " putEma22 = ", putEma22, " putEma7 = ", putEma7)
 		return LegInfo{
 			price:     putData.Data[putIdx].High + 0.5,
 			strike:    putStrike,
@@ -393,7 +372,7 @@ func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId stri
 	return smartapigo.ModifyOrderParams{
 		Variety:       order.Variety,
 		OrderID:       orderId,
-		OrderType:     "SELL",
+		OrderType:     "STOPLOSS_LIMIT",
 		ProductType:   order.ProductType,
 		Duration:      order.Duration,
 		Price:         strconv.FormatFloat(sl, 'f', 2, 64),
@@ -401,6 +380,7 @@ func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId stri
 		TradingSymbol: order.TradingSymbol,
 		SymbolToken:   order.SymbolToken,
 		Exchange:      nfo,
+		TriggerPrice:  strconv.FormatFloat(sl, 'f', 2, 64),
 	}
 }
 
