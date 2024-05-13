@@ -1,27 +1,10 @@
-2024/05/13 01:41:11 This is a log entry
-2024/05/13 01:41:11 Starting the server, time:  2024-05-13 01:41:11.386438 +0530 IST m=+0.003502584
-2024/05/13 01:41:17 Current TOTP for PV5J747OQSTMGEN2NVYSH7IRYM = : 948652
-2024/05/13 01:42:01 http: panic serving [::1]:57815: runtime error: invalid memory address or nil pointer dereference
-goroutine 13 [running]:
-net/http.(*conn).serve.func1()
-	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:1854 +0x118
-panic({0x104fe1600, 0x1057e8cf0})
-	/Users/pritibardhanjha/sdk/go1.20.4/src/runtime/panic.go:890 +0x230
-github.com/TredingInGo/AutomationService/strategy.TrendFollowingRsiForFO(0x14000c566d0, 0x14000c56680, 0x14000c56630, {0x14000381518, 0x5}, {0x14000360d68, 0x5}, {0x14000a66b10, 0x17}, {0x14000c0a0d8, ...}, ...)
-	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:345 +0x584
-github.com/TredingInGo/AutomationService/strategy.(*strategy).ExecuteAlgo(0x14000c57388, {0x10505f300, 0x14000c28000}, {0x104f179d2, 0x7}, {0x104f18cb9, 0x9}, 0x140000e9f80, 0x14000c57200)
-	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:145 +0xac8
-github.com/TredingInGo/AutomationService/strategy.(*strategy).Algo(0x14000c57388, {0x10505f300, 0x14000c28000}, 0x140000e9f80)
-	/Users/pritibardhanjha/GolandProjects/AutomationService/strategy/strategy.go:84 +0x68
-main.main.func10({0x10505ff50, 0x14000c1c000}, 0x14000c08200)
-	/Users/pritibardhanjha/GolandProjects/AutomationService/main.go:294 +0x360
-net/http.HandlerFunc.ServeHTTP(0x140000c09c0, {0x10505ff50, 0x14000c1c000}, 0x14000c08200)
-	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:2122 +0x44
-github.com/gorilla/mux.(*Router).ServeHTTP(0x14000a6c000, {0x10505ff50, 0x14000c1c000}, 0x14000c08200)
-	/Users/pritibardhanjha/go/pkg/mod/github.com/gorilla/mux@v1.8.0/mux.go:210 +0x258
-net/http.serverHandler.ServeHTTP({0x14000a6e4b0}, {0x10505ff50, 0x14000c1c000}, 0x14000c08000)
-	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:2936 +0x448
-net/http.(*conn).serve(0x140001aa480, {0x105060130, 0x140000c2640})
-	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:1995 +0x154c
-created by net/http.(*Server).Serve
-	/Users/pritibardhanjha/sdk/go1.20.4/src/net/http/server.go:3089 +0x7ec
+2024/05/14 00:17:27 This is a log entry
+2024/05/14 00:17:27 Starting the server, time:  2024-05-14 00:17:27.546597 +0530 IST m=+0.003332501
+2024/05/14 00:17:41 Current TOTP for PV5J747OQSTMGEN2NVYSH7IRYM = : 161651
+2024/05/14 00:17:55  CALL Trade taken on Alligator 
+2024/05/14 00:17:55 {647.85 47300 BUY 44142 BANKNIFTY15MAY2447300CE 1}
+2024/05/14 00:17:55 
+lot size 15 
+2024/05/14 00:17:56 
+ order res {BANKNIFTY15MAY2447300CE 240514000000026}
+2024/05/14 00:17:59 Order Cancelled { 240514000000026}

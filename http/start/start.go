@@ -87,15 +87,6 @@ func (h *Handler) starter() {
 				}
 				log.Println("response from auto intra-day api ", string(resp))
 
-				if creds.clientCode == "P51284799" {
-					go post(host, "/option", data)
-					if err != nil {
-						log.Println("Error while starting option-day automatically for clientID ", creds.clientCode,
-							" error ", err)
-						continue
-					}
-					log.Println("response from auto option api ", string(resp))
-				}
 			}
 		}
 	}
