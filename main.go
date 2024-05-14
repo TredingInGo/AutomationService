@@ -291,7 +291,7 @@ func main() {
 		ltp := smartStream.New(clientCode, userSession.Session.FeedToken)
 		strategy := strategy.New()
 
-		strategy.Algo(ltp, userSession.ApiClient)
+		strategy.Arbitrage(ltp, userSession.ApiClient)
 
 	}).Methods(http.MethodPost)
 

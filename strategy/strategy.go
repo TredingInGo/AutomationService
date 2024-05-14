@@ -164,13 +164,6 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 
 	price := orderInfo.Spot
 	trailingStopLoss := price - float64(orderInfo.Sl)
-	modifyOrderParams1 := getModifyOrderParams(trailingStopLoss, orderParams, "240513000723945")
-	orderRes, err1 := client.ModifyOrder(modifyOrderParams1)
-	if err1 != nil {
-		log.Printf("\n Error in modifying SL: %v \n", err1)
-	} else {
-		log.Printf("SL Modified %v", orderRes)
-	}
 
 	target := price + float64(orderInfo.Tp)
 	log.Println("Trying to connect with token ", tokenInfo)
