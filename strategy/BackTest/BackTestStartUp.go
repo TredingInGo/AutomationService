@@ -2,6 +2,7 @@ package BackTest
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/TredingInGo/AutomationService/strategy"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"log"
@@ -16,7 +17,7 @@ const (
 )
 
 var stockData = make(map[string][]smartapigo.CandleResponse)
-var Amount = 100000.0
+var Amount = 100000000.0
 
 type kpi struct {
 	trade            int
@@ -47,27 +48,15 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 	maxProfit := initTrade()
 	rsiVal := 5
 	ema := false
-	for rsi := 5; rsi <= 20; rsi++ {
-		tradeReport = initTrade()
-		Amount = 100000
-		executeBacktest(client, stockList, rsi, false)
-		log.Printf("\n rsi = %v, isEma = false, \n", rsi)
-		printCurrentTradeReport()
-		if tradeReport.profit > maxProfit.profit {
-			maxProfit = tradeReport
-			rsiVal = rsi
-			ema = false
-		}
-		Amount = 100000
-		tradeReport = initTrade()
-		log.Printf("\n rsi = %v, isEma = true, \n", rsi)
-		executeBacktest(client, stockList, rsi, true)
-		if tradeReport.profit > maxProfit.profit {
-			maxProfit = tradeReport
-			rsiVal = rsi
-			ema = true
-		}
-		printCurrentTradeReport()
+
+	tradeReport = initTrade()
+	Amount = 100000000
+	executeBacktest(client, stockList, 14, false)
+	printCurrentTradeReport()
+	if tradeReport.profit > maxProfit.profit {
+		maxProfit = tradeReport
+		rsiVal = 14
+		ema = false
 	}
 
 	log.Println("********************|| FINAL TRADE REPORT ||************************")
@@ -153,48 +142,9 @@ func getStockTick(stockToken string, idx *int) []smartapigo.CandleResponse {
 }
 
 func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, userName string, idx *int, rsiPeriod int, isEma bool) []*strategy.ORDER {
-	orders := []*strategy.ORDER{}
-	filteredStocks := []*strategy.ORDER{}
-	//inp := make(chan *strategy.EligibleStockParam, 1000)
-	//out := make(chan *strategy.ORDER, 1000)
-	//wg := sync.WaitGroup{}
-	//
-	//go func() {
-	//	for i := 0; i < worker; i++ {
-	//		wg.Add(1)
-	//		go func() {
-	//			defer wg.Done()
-	//			for param := range inp {
-	//				order := Execute(param.Symbol, param.Token, client, param.UserName, idx)
-	//				if order != nil {
-	//					out <- order
-	//				}
-	//			}
-	//		}()
-	//	}
-	//}()
-	//
-	//go func() {
-	//	for _, stock := range stocks {
-	//		inp <- &strategy.EligibleStockParam{
-	//			Symbols:  strategy.Symbols{Symbol: stock.Token, Token: stock.Symbol},
-	//			UserName: userName,
-	//		}
-	//	}
-	//	close(inp)
-	//}()
-	//
-	//// close output channel after all the workers are done
-	//go func() {
-	//	wg.Wait()
-	//	close(out)
-	//}()
-	//
-	//for order := range out {
-	//	orders = append(orders, order)
-	//}
 
-	//start := time.Now()
+	filteredStocks := []*strategy.ORDER{}
+
 	for _, stock := range stocks {
 		param := strategy.EligibleStockParam{
 			Symbols:  strategy.Symbols{Symbol: stock.Symbol, Token: stock.Token},
@@ -207,32 +157,60 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 		}
 	}
 
-	//log.Println("Time to filter stocks ", time.Since(start))
-
-	//start = time.Now()
-	for _, stock := range filteredStocks {
-		order := Execute(stock.Symbol, stock.Token, client, userName, idx, rsiPeriod, isEma)
-		if order != nil {
-			orders = append(orders, order)
-		}
-	}
-
 	//log.Println("Time to get orders ", time.Since(start))
 
-	return orders
+	return filteredStocks
 }
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int, rsiPeriod int, isEma bool) *strategy.ORDER {
 	if len(dataWithIndicatorsMap[stockToken].Data) == 0 || len(dataWithIndicatorsMap[stockToken].Data) <= *idx {
 		return nil
 	}
+	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx)
+	var order strategy.ORDER
+	order.OrderType = "None"
+	if high == 0.0 || low == 1000000.0 {
+		return &order
+	}
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high {
+		order = strategy.ORDER{
+			Spot:      high + 0.05,
+			Sl:        5,
+			Tp:        25,
+			Quantity:  25,
+			OrderType: "BUY",
+			Token:     "99926000",
+		}
+	}
 
-	order := TrendFollowingRsi(dataWithIndicatorsMap[stockToken], stockToken, symbol, userName, client, *idx, rsiPeriod, isEma)
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low {
+		order = strategy.ORDER{
+			Spot:      low - 0.05,
+			Sl:        5,
+			Tp:        25,
+			Quantity:  25,
+			OrderType: "SELL",
+			Token:     "99926000",
+		}
+	}
+
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
-
+	fmt.Println("OrderPlaced ", order)
 	return &order
+}
+
+func GetORBRange(data strategy.DataWithIndicators, idx *int) (float64, float64) {
+
+	high := 0.0
+	low := 1000000.0
+
+	for i := *idx - 1; i > *idx-21; i-- {
+		high = math.Max(data.Data[i].High, high)
+		low = math.Min(data.Data[i].Low, low)
+	}
+	return high, low
 }
 
 func PlaceOrder(order *strategy.ORDER, symbol string, idx *int) {
@@ -310,6 +288,7 @@ func TrendFollowingRsi(data strategy.DataWithIndicators, token, symbol, username
 			Tp:        60,
 			Quantity:  calculatePosition(data.Data[idx].High),
 			OrderType: "BUY",
+			Token:     "99926000",
 		}
 
 		//} else if data.Data[idx].High < ma8 && adxAvg5 > adxAvg8 && adx20.Adx[idx] >= 20 && adx20.PlusDi[idx] < adx20.MinusDi[idx] && ma3 < ma5 && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsi[idx] < 40 && rsi[idx] > 30 && rsiAvg5 < rsiavg8 {

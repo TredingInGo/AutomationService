@@ -53,10 +53,12 @@ func NEW() strategy {
 	}
 }
 
+var flag = true
+
 func (s *strategy) Arbitrage(ltp smartStream.SmartStream, client *smartapigo.Client) {
 
-	expiry := niftyExpairy
-	index := "NIFTY"
+	expiry := bankExpairy
+	index := "BANKNIFTY"
 	index = strings.ToUpper(index)
 	expiry = strings.ToUpper(expiry)
 
@@ -211,21 +213,28 @@ func placeFOArbitrageOrder(maxPL float64, leg Legs, client *smartapigo.Client, i
 	//if index == "NIFTY" {
 	//	qty = leg.leg1.quantity / 25.0
 	//}
-	if maxPL > 350 {
+	if maxPL > 500 && flag {
 		if isAllLiquid(leg) {
 			order1 := getFOOrderParamsForArbitrage(leg.leg1)
+			order4 := getFOOrderParamsForArbitrage(leg.leg4)
 			order2 := getFOOrderParamsForArbitrage(leg.leg2)
 			order3 := getFOOrderParamsForArbitrage(leg.leg3)
-			order4 := getFOOrderParamsForArbitrage(leg.leg4)
+			var placedOrderList []string
 			orderRes1, err1 := client.PlaceOrder(order1)
-			orderRes2, err2 := client.PlaceOrder(order2)
-			orderRes3, err3 := client.PlaceOrder(order3)
+			placedOrderList = append(placedOrderList, orderRes1.OrderID)
 			orderRes4, err4 := client.PlaceOrder(order4)
+			placedOrderList = append(placedOrderList, orderRes4.OrderID)
+			orderRes2, err2 := client.PlaceOrder(order2)
+			placedOrderList = append(placedOrderList, orderRes2.OrderID)
+			orderRes3, err3 := client.PlaceOrder(order3)
+			placedOrderList = append(placedOrderList, orderRes3.OrderID)
+
 			log.Println(err1, err2, err3, err4)
 			log.Println("orderID 1: ", orderRes1)
 			log.Println("orderID 2: ", orderRes2)
 			log.Println("orderID 3: ", orderRes3)
 			log.Println("orderID 4: ", orderRes4)
+			flag = false
 		}
 
 	}

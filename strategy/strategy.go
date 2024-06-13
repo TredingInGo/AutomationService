@@ -25,8 +25,8 @@ const (
 	nfo              = "NFO"
 	niftyLotSize     = 25
 	bankNiftyLotSize = 15
-	bankExpairy      = "15MAY24"
-	niftyExpairy     = "16MAY24"
+	bankExpairy      = "29MAY24"
+	niftyExpairy     = "20JUN24"
 )
 
 var (
