@@ -166,19 +166,21 @@ func main() {
 			return
 		}
 		mutex.Lock()
-		userSession, ok := userSessions[clientCode]
+		userSession, ok := activeUsers.Get(clientCode)
 		mutex.Unlock()
+
 		if !ok {
 			writer.Write([]byte("clientCode not found"))
 			writer.WriteHeader(400)
 			return
 		}
-		if userSession.session.FeedToken == "" {
+
+		if userSession.Session.FeedToken == "" {
 			log.Println("feed token not set")
 			return
 		}
 		db := Simulation.Connect()
-		BackTest.BackTest(userSession.apiClient, db)
+		BackTest.BackTest(userSession.ApiClient, db)
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			writer.Write([]byte("Error marshalling response"))
@@ -291,7 +293,7 @@ func main() {
 		ltp := smartStream.New(clientCode, userSession.Session.FeedToken)
 		strategy := strategy.New()
 
-		strategy.Arbitrage(ltp, userSession.ApiClient)
+		strategy.DCAlgo(ltp, userSession.ApiClient)
 
 	}).Methods(http.MethodPost)
 
