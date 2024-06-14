@@ -90,7 +90,7 @@ func populateStockTick(client *smartapigo.Client, symbolToken string, timeFrame 
 
 	tempTime := time.Now()
 	var candles []smartapigo.CandleResponse
-	for i := 0; i < 9; i++ {
+	for i := 0; i < 27; i++ {
 		toDate := tempTime.Format("2006-01-02 15:04")
 		fromDate := tempTime.Add(time.Hour * 24 * -100).Format("2006-01-02 15:04")
 		tempTime = tempTime.Add(time.Hour * 24 * -100)
@@ -172,7 +172,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	if high == 0.0 || low == 1000000.0 {
 		return &order
 	}
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi20"][*idx] > 40 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 40 {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 35 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 75 {
 		order = strategy.ORDER{
 			Spot:      high + 0.05,
 			Sl:        5,
@@ -183,7 +183,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 		}
 	}
 
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi20"][*idx] < 30 {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 {
 		order = strategy.ORDER{
 			Spot:      low - 0.05,
 			Sl:        5,

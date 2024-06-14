@@ -97,7 +97,7 @@ func (s *strategy) ExecuteDCAlgo(ltp smartStream.SmartStream, expiry, index stri
 func getATMStrikeFoDc(client *smartapigo.Client, index string) ([]smartapigo.CandleResponse, float64) {
 	//var candles []smartapigo.CandleResponse
 	if index == "NIFTY" {
-		candles := GetStockTick(client, niftyToken, "ONE_MINUTE", nse)
+		candles := GetStockTick(client, niftyToken, "FIVE_MINUTE", nse)
 		if len(candles) <= 100 {
 			return []smartapigo.CandleResponse{}, 0.0
 		}
@@ -106,7 +106,7 @@ func getATMStrikeFoDc(client *smartapigo.Client, index string) ([]smartapigo.Can
 		atmStrike := float64(nifty * mf)
 		return candles, atmStrike
 	} else if index == "BANKNIFTY" {
-		candles := GetStockTick(client, bankNiftyToken, "ONE_MINUTE", nse)
+		candles := GetStockTick(client, bankNiftyToken, "FIVE_MINUTE", nse)
 		if len(candles) <= 100 {
 			return []smartapigo.CandleResponse{}, 0.0
 		}
