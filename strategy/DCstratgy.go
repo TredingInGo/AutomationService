@@ -278,7 +278,7 @@ func TrackOrdersFoDc(client *smartapigo.Client, symbol, userName string) {
 				log.Printf("\nposition for %v is %v\n", postion, userName)
 				isPrint = false
 			}
-			if postion.SymbolToken != niftyToken {
+			if postion.InstrumentType != "OPTIDX" {
 				continue
 			}
 			qty, err := strconv.Atoi(postion.NetQty)

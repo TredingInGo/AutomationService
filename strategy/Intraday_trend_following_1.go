@@ -294,7 +294,7 @@ func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userNam
 				log.Printf("\nposition for %v is %v\n", postion, userName)
 				isPrint = false
 			}
-			if postion.SymbolToken == niftyToken || postion.SymbolToken == bankNiftyToken {
+			if postion.InstrumentType == "OPTIDX" {
 				continue
 			}
 			qty, err := strconv.Atoi(postion.NetQty)
