@@ -172,7 +172,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	if high == 0.0 || low == 1000000.0 {
 		return &order
 	}
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi20"][*idx] > 40 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 40 {
 		order = strategy.ORDER{
 			Spot:      high + 0.05,
 			Sl:        5,
@@ -183,7 +183,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 		}
 	}
 
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi20"][*idx] < 30 {
 		order = strategy.ORDER{
 			Spot:      low - 0.05,
 			Sl:        5,
