@@ -79,13 +79,13 @@ func (h *Handler) starter() {
 					"clientCode": creds.clientCode,
 				}
 
-				resp, err = post(host, "/intra-day", data)
+				resp, err = post(host, "/option", data)
 				if err != nil {
-					log.Println("Error while starting intra-day automatically for clientID ", creds.clientCode,
+					log.Println("Error while starting option automatically for clientID ", creds.clientCode,
 						" error ", err)
 					continue
 				}
-				log.Println("response from auto intra-day api ", string(resp))
+				log.Println("response from auto option api ", string(resp))
 
 			}
 		}
