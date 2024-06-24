@@ -195,7 +195,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 	if data.Data[idx].Close > high && rsi[idx] > 35 && rsi[idx] < 75 {
 		log.Println(" CALL Trade taken on Dc BreakOut:")
 		return LegInfo{
-			price:     callData.Data[callIdx].High + 0.5,
+			price:     callData.Data[callIdx].Close + 0.5,
 			strike:    callStrike,
 			orderType: "BUY",
 			token:     callToken,
@@ -206,7 +206,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 {
 		log.Println(" PUT Trade taken on DC breakout ")
 		return LegInfo{
-			price:     putData.Data[putIdx].High + 0.5,
+			price:     putData.Data[putIdx].Close + 0.5,
 			strike:    putStrike,
 			orderType: "BUY",
 			token:     putToken,

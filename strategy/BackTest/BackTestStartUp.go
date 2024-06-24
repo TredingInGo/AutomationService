@@ -17,7 +17,7 @@ const (
 )
 
 var stockData = make(map[string][]smartapigo.CandleResponse)
-var Amount = 100000000.0
+var Amount = 100000.0
 
 type kpi struct {
 	trade            int
@@ -38,30 +38,31 @@ var trades []int
 
 func BackTest(client *smartapigo.Client, db *sql.DB) {
 	stock := strategy.Symbols{
-		"99926000",
-		"NIFTY",
+		"99926009",
+		"BANKNIFTY",
 	}
 	var stockList []strategy.Symbols
 	stockList = append(stockList, stock)
 	populateStockData(stockList, client)
 	//rsi, ema,
 	maxProfit := initTrade()
-	rsiVal := 5
+	Dc := 5
 	ema := false
-
-	tradeReport = initTrade()
-	Amount = 100000000
-	executeBacktest(client, stockList, 14, false)
-	printCurrentTradeReport()
-	if tradeReport.profit > maxProfit.profit {
-		maxProfit = tradeReport
-		rsiVal = 14
-		ema = false
+	for i := 5; i < 100; i++ {
+		tradeReport = initTrade()
+		Amount = 100000
+		executeBacktest(client, stockList, i, false)
+		printCurrentTradeReport()
+		if tradeReport.profit > maxProfit.profit {
+			maxProfit = tradeReport
+			Dc = i
+			ema = false
+		}
 	}
 
 	log.Println("********************|| FINAL TRADE REPORT ||************************")
 	tradeReport = maxProfit
-	log.Println("Rsi: ", rsiVal, " isEma ", ema)
+	log.Println("Rsi: ", Dc, " isEma ", ema)
 	printCurrentTradeReport()
 	//plotGraph(amountChange, trades)
 }
@@ -162,11 +163,11 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 	return filteredStocks
 }
 
-func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int, rsiPeriod int, isEma bool) *strategy.ORDER {
+func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int, dcPeriod int, isEma bool) *strategy.ORDER {
 	if len(dataWithIndicatorsMap[stockToken].Data) == 0 || len(dataWithIndicatorsMap[stockToken].Data) <= *idx {
 		return nil
 	}
-	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx)
+	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx, dcPeriod)
 	var order strategy.ORDER
 	order.OrderType = "None"
 	if high == 0.0 || low == 1000000.0 {
@@ -174,23 +175,23 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	}
 	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 35 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 75 {
 		order = strategy.ORDER{
-			Spot:      high + 0.05,
+			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close + 0.05,
 			Sl:        5,
 			Tp:        25,
 			Quantity:  25,
 			OrderType: "BUY",
-			Token:     "99926000",
+			Token:     "99926009",
 		}
 	}
 
 	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 {
 		order = strategy.ORDER{
-			Spot:      low - 0.05,
+			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close - 0.05,
 			Sl:        5,
 			Tp:        25,
 			Quantity:  25,
 			OrderType: "SELL",
-			Token:     "99926000",
+			Token:     "99926009",
 		}
 	}
 
@@ -200,13 +201,17 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	fmt.Println("OrderPlaced ", order)
 	return &order
 }
+func calculateQuantity() int {
+	qty := Amount / 25
+	return int(qty)
+}
 
-func GetORBRange(data strategy.DataWithIndicators, idx *int) (float64, float64) {
+func GetORBRange(data strategy.DataWithIndicators, idx *int, dcPeriod int) (float64, float64) {
 
 	high := 0.0
 	low := 1000000.0
 
-	for i := *idx - 1; i > *idx-21; i-- {
+	for i := *idx - 1; i > *idx-dcPeriod; i-- {
 		high = math.Max(data.Data[i].High, high)
 		low = math.Min(data.Data[i].Low, low)
 	}
