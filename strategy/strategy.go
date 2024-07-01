@@ -231,11 +231,11 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 	}
 	log.Printf("\n order res %v", orderRes)
 	orders, _ := client.GetOrderBook()
-	orderDetails := getOrderDetailsByOrderId(orderRes.OrderID, orders)
+	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
 	if orderDetails.OrderStatus != "complete" {
 		time.Sleep(5000)
 		orders, _ = client.GetOrderBook()
-		orderDetails = getOrderDetailsByOrderId(orderRes.OrderID, orders)
+		orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
 		if orderDetails.OrderStatus != "complete" || orderDetails.OrderID != orderRes.OrderID {
 			orderRes, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
 			log.Printf("Order Cancelled %v", orderRes)
@@ -248,7 +248,7 @@ func placeFOOrder(client *smartapigo.Client, order smartapigo.OrderParams) (smar
 	if orders == nil {
 		return orderDetails, false
 	}
-	slOrder := getSLOrder(orders, order, orderRes.OrderID)
+	slOrder := GetSLOrder(orders, order, orderRes.OrderID)
 	log.Println("sl order", slOrder)
 	return slOrder, true
 
@@ -340,7 +340,7 @@ func TrendFollowingRsiForFO(data, callData, putData *DataWithIndicators, callTok
 
 	return order
 }
-func getOrderDetailsByOrderId(orderId string, orders smartapigo.Orders) smartapigo.Order {
+func GetOrderDetailsByOrderId(orderId string, orders smartapigo.Orders) smartapigo.Order {
 	for i := 0; i < len(orders); i++ {
 		if orders[i].OrderID == orderId {
 			return orders[i]
@@ -349,16 +349,28 @@ func getOrderDetailsByOrderId(orderId string, orders smartapigo.Orders) smartapi
 	return smartapigo.Order{}
 }
 
-func getSLOrder(orders smartapigo.Orders, orderParams smartapigo.OrderParams, orderId string) smartapigo.Order {
+func GetSLOrder(orders smartapigo.Orders, orderParams smartapigo.OrderParams, orderId string) smartapigo.Order {
 	for i := 0; i < len(orders); i++ {
 		sl := orders[i].Price
 		price, _ := strconv.ParseFloat(orderParams.Price, 64)
-		if orders[i].SymbolToken == orderParams.SymbolToken && sl < price && orders[i].OrderID > orderId && orders[i].OrderStatus != "complete" {
+		if orders[i].SymbolToken == orderParams.SymbolToken && sl < price && orders[i].OrderID > orderId && orders[i].OrderStatus == "trigger pending" && orders[i].OrderType == "STOPLOSS_LIMIT" {
 			return orders[i]
 		}
 	}
 	orders[0].OrderID = "NA"
 	return orders[0]
+}
+
+func GetSLOrders(orders smartapigo.Orders, orderParams smartapigo.OrderParams, orderId string) []smartapigo.Order {
+	var slOrders []smartapigo.Order
+	for i := 0; i < len(orders); i++ {
+		sl := orders[i].Price
+		price, _ := strconv.ParseFloat(orderParams.Price, 64)
+		if orders[i].SymbolToken == orderParams.SymbolToken && sl < price && orders[i].OrderID > orderId && orders[i].OrderStatus == "trigger pending" && orders[i].OrderType == "STOPLOSS_LIMIT" {
+			slOrders = append(slOrders, orders[i])
+		}
+	}
+	return slOrders
 }
 
 func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId string) smartapigo.ModifyOrderParams {

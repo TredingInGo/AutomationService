@@ -38,31 +38,30 @@ var trades []int
 
 func BackTest(client *smartapigo.Client, db *sql.DB) {
 	stock := strategy.Symbols{
-		"99926009",
-		"BANKNIFTY",
+		"4963",
+		"ICICIBANK",
 	}
 	var stockList []strategy.Symbols
 	stockList = append(stockList, stock)
 	populateStockData(stockList, client)
 	//rsi, ema,
 	maxProfit := initTrade()
-	Dc := 5
-	ema := false
-	for i := 5; i < 100; i++ {
-		tradeReport = initTrade()
+	Dc := 0
+	for i := 20; i < 21; i++ {
 		Amount = 100000
+		tradeReport = initTrade()
 		executeBacktest(client, stockList, i, false)
+		fmt.Println("Current Dc = ", i)
 		printCurrentTradeReport()
 		if tradeReport.profit > maxProfit.profit {
 			maxProfit = tradeReport
 			Dc = i
-			ema = false
 		}
 	}
 
 	log.Println("********************|| FINAL TRADE REPORT ||************************")
 	tradeReport = maxProfit
-	log.Println("Rsi: ", Dc, " isEma ", ema)
+	log.Println("DC: ", Dc)
 	printCurrentTradeReport()
 	//plotGraph(amountChange, trades)
 }
@@ -168,37 +167,38 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 		return nil
 	}
 	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx, dcPeriod)
+	obv := strategy.CalculateOBV(dataWithIndicatorsMap[stockToken])
 	var order strategy.ORDER
 	order.OrderType = "None"
 	if high == 0.0 || low == 1000000.0 {
 		return &order
 	}
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 35 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 75 {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 35 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 75 && strategy.IsOBVIncreasing(obv) {
 		order = strategy.ORDER{
-			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close + 0.05,
-			Sl:        5,
-			Tp:        25,
-			Quantity:  25,
+			Spot:      high + 0.05,
+			Sl:        int(high * 0.01),
+			Tp:        int(high * 0.02),
+			Quantity:  1,
 			OrderType: "BUY",
-			Token:     "99926009",
+			Token:     "4963",
 		}
 	}
 
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 && strategy.IsOBVDecreasing(obv) {
 		order = strategy.ORDER{
-			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close - 0.05,
-			Sl:        5,
-			Tp:        25,
-			Quantity:  25,
+			Spot:      low - 0.05,
+			Sl:        int(low * 0.01),
+			Tp:        int(low * 0.02),
+			Quantity:  1,
 			OrderType: "SELL",
-			Token:     "99926009",
+			Token:     "4963",
 		}
 	}
 
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
-	fmt.Println("OrderPlaced ", order)
+	//fmt.Println("OrderPlaced ", order)
 	return &order
 }
 func calculateQuantity() int {
@@ -340,8 +340,9 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 			if data[*idx].Close <= sl {
 				return sl - spot
 			}
-			if spot < data[*idx].Close {
-				trailingStopLoss += float64(int((data[*idx].Close - spot) / 2))
+			if spot+5 < data[*idx].Close {
+				trailingStopLoss += 5
+				spot += 5
 				//sl = trailingStopLoss
 			}
 		}
@@ -353,8 +354,9 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 			if data[*idx].Close <= tp {
 				return spot - tp
 			}
-			if spot > data[*idx].Close {
-				trailingStopLoss -= float64(int((spot - data[*idx].Close) / 2))
+			if spot-5 > data[*idx].Close {
+				trailingStopLoss -= 5
+				spot -= 5
 				//sl = trailingStopLoss
 			}
 		}

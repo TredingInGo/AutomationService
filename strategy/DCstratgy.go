@@ -1,8 +1,10 @@
 package strategy
 
 import (
+	"fmt"
 	"github.com/TredingInGo/AutomationService/smartStream"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"github.com/TredingInGo/smartapi/models"
 	"log"
 	"math"
 	"strconv"
@@ -43,7 +45,7 @@ func (s *strategy) ExecuteDCAlgo(ltp smartStream.SmartStream, expiry, index stri
 	} else if index == "BANKNIFTY" {
 		ITMStrike = bankNifty * 4
 	}
-	callSpot := ATMstrike - float64(ITMStrike)
+	callSpot := ATMstrike + float64(ITMStrike)
 	callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
 	callToken := GetFOToken(callSymbol, nfo)
 	callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
@@ -87,7 +89,7 @@ func (s *strategy) ExecuteDCAlgo(ltp smartStream.SmartStream, expiry, index stri
 
 	}
 	orderParams := getDcOrderParams(orderInfo)
-	isTradePlaced := placeDcOrder(client, orderParams)
+	isTradePlaced := s.PlaceDcOrder(ltp, client, orderParams)
 	if isTradePlaced {
 		*maxTrade--
 	}
@@ -118,15 +120,26 @@ func getATMStrikeFoDc(client *smartapigo.Client, index string) ([]smartapigo.Can
 	return nil, 0
 }
 
-func placeDcOrder(client *smartapigo.Client, order smartapigo.OrderParams) bool {
+func (s *strategy) PlaceDcOrder(ltp smartStream.SmartStream, client *smartapigo.Client, order smartapigo.OrderParams) bool {
 	orderRes, err := client.PlaceOrder(order)
 	if err != nil {
 		log.Printf("error: %v", err)
 		return false
 	}
 	log.Printf("\n order res %v", orderRes)
-	TrackOrdersFoDc(client, order.SymbolToken, "User")
-
+	orders, _ := client.GetOrderBook()
+	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
+	if orderDetails.OrderStatus != "complete" {
+		time.Sleep(10000)
+	}
+	orders, _ = client.GetOrderBook()
+	orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
+	if orderDetails.OrderStatus != "complete" {
+		orderRes, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
+		log.Printf("Order Cancelled as it was pending%v", orderRes)
+		return false
+	}
+	s.TrackOrdersFoDc(ltp, client, order.SymbolToken, "User", orderRes.OrderID, order)
 	return true
 
 }
@@ -200,7 +213,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			orderType: "BUY",
 			token:     callToken,
 			symbol:    callSymbol,
-			quantity:  2,
+			quantity:  4,
 		}
 
 	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 {
@@ -211,7 +224,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			orderType: "BUY",
 			token:     putToken,
 			symbol:    putSymbol,
-			quantity:  2,
+			quantity:  4,
 		}
 
 	}
@@ -257,54 +270,64 @@ func IsOBVIncreasing(obv []int) bool {
 
 }
 
-func TrackOrdersFoDc(client *smartapigo.Client, symbol, userName string) {
-	isPrint := true
-	for {
+func IsOBVDecreasing(obv []int) bool {
+	ma3 := 0.0
+	ma9 := 0.0
+	for i := len(obv) - 1; i > len(obv)-4; i-- {
+		ma3 += float64(obv[i])
+	}
+	for i := len(obv) - 1; i > len(obv)-10; i-- {
+		ma9 += float64(obv[i])
+	}
+	return ma3/3 < ma9/9
 
-		//orders, _ := client.GetOrderBook()
-		time.Sleep(1 * time.Second)
-		positions, error := client.GetPositions()
-		isAnyPostionOpen := false
-		if error != nil {
-			isAnyPostionOpen = true
-			continue
-		}
+}
 
-		totalPL := 0.0
-		//log.Printf("\n*************** Positions ************** \n")
+func (s *strategy) TrackOrdersFoDc(ltp smartStream.SmartStream, client *smartapigo.Client, symbol, userName, orderId string, order smartapigo.OrderParams) {
+	var tokenInfo []models.TokenInfo
+	tokenInfo = append(tokenInfo, models.TokenInfo{models.NSEFO, order.SymbolToken})
 
-		for _, postion := range positions {
-			if isPrint {
-				log.Printf("\nposition for %v is %v\n", postion, userName)
-				isPrint = false
-			}
-			if postion.InstrumentType != "OPTIDX" {
-				continue
-			}
-			qty, err := strconv.Atoi(postion.NetQty)
-			if err != nil {
-				isAnyPostionOpen = true
-				continue
-			}
-			if qty != 0 {
-				isAnyPostionOpen = true
-			}
-			val, err2 := strconv.ParseFloat(postion.NetValue, 64)
-			if err2 != nil {
-				isAnyPostionOpen = true
-				continue
-			}
-			totalPL += val
-		}
+	price, _ := strconv.ParseFloat(order.Price, 64)
+	target, _ := strconv.ParseFloat(order.SquareOff, 64)
+	squareoff := price + target
+	StopLoss, _ := strconv.ParseFloat(order.StopLoss, 64)
+	trailingStopLoss := price - StopLoss
+	orderPrice := price
 
-		if isAnyPostionOpen == false {
-			if totalPL <= -1000.0 || totalPL >= 2000.0 {
-				ForceCloseSession(client)
-			}
-			log.Printf("total P/L  %v", totalPL)
-			return
-		}
-
+	ordersList, _ := client.GetOrderBook()
+	if ordersList == nil {
+		return
 	}
 
+	slOrder := GetSLOrder(ordersList, order, orderId)
+
+	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
+	for data := range s.LiveData {
+		LTP := float64(data.LastTradedPrice / 100.0)
+		fmt.Println("P/L: - ", LTP-orderPrice)
+		if LTP >= price+5.0 {
+			trailingStopLoss += 5.0
+			price += 5.0
+			modifyOrderParams := getModifyOrderParams(trailingStopLoss, order, slOrder.OrderID)
+			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
+			for i := 0; i < 3; i++ {
+				if err1 == nil {
+					break
+				}
+				log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
+				orderRes, err1 = client.ModifyOrder(modifyOrderParams)
+			}
+			if err1 != nil {
+				log.Printf("\n Error in modifying SL: %v \n", err1)
+			} else {
+				log.Printf("SL Modified %v", orderRes)
+			}
+
+		}
+		if LTP <= trailingStopLoss || LTP >= squareoff {
+			ltp.STOP()
+			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
+			break
+		}
+	}
 }

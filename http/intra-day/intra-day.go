@@ -2,6 +2,7 @@ package intra_day
 
 import (
 	"encoding/json"
+	"github.com/TredingInGo/AutomationService/smartStream"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -44,7 +45,9 @@ func (i *IntraDay) IntraDay(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	db := Simulation.Connect()
-	go strategy.TrendFollowingStretgy(userInfo.Ctx, userInfo.ApiClient, db)
+	ltp := smartStream.New(clientCode, userInfo.Session.FeedToken)
+	strategy := strategy.New()
+	go strategy.TrendFollowingStretgy(ltp, userInfo.Ctx, userInfo.ApiClient, db)
 
 	userInfo.IsIntraDayRunning = true
 	i.activeUsers.Update(clientCode, userInfo)

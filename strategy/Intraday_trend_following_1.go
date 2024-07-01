@@ -3,7 +3,10 @@ package strategy
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"github.com/TredingInGo/AutomationService/smartStream"
 	smartapigo "github.com/TredingInGo/smartapi"
+	"github.com/TredingInGo/smartapi/models"
 	"log"
 	"math"
 	"strconv"
@@ -68,11 +71,11 @@ func ForceCloseSession(client *smartapigo.Client) {
 	log.Printf("Session closed  for %v", userProfile.UserName)
 }
 
-func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *sql.DB) {
+func (s *strategy) TrendFollowingStretgy(ltp smartStream.SmartStream, ctx context.Context, client *smartapigo.Client, db *sql.DB) {
 
 	stockList := LoadStockList(db)
 	userProfile, _ := client.GetUserProfile()
-	TrackOrders(ctx, client, "DUMMY", userProfile.UserName)
+	//s.TrackOrders(ctx, client, "DUMMY", userProfile.UserName)
 
 	for {
 		//for _, stock := range stockList {
@@ -93,7 +96,7 @@ func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *s
 		default:
 		}
 
-		getEligibleStocks(ctx, stockList, client, userProfile.UserName)
+		s.getEligibleStocks(ltp, ctx, stockList, client, userProfile.UserName)
 		// get most eligible stock for trade
 
 		//sort.Slice(eligibleStocks, func(i, j int) bool {
@@ -111,7 +114,7 @@ func TrendFollowingStretgy(ctx context.Context, client *smartapigo.Client, db *s
 	}
 }
 
-func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo.Client, userName string) {
+func (s *strategy) getEligibleStocks(ltp smartStream.SmartStream, ctx context.Context, stocks []Symbols, client *smartapigo.Client, userName string) {
 	//filteredStocks := []*ORDER{}
 	//orders := []*ORDER{}
 	//start := time.Now()
@@ -141,23 +144,10 @@ func getEligibleStocks(ctx context.Context, stocks []Symbols, client *smartapigo
 		order := Execute(param.Token, param.Symbol, client, param.UserName)
 		if order != nil {
 			orderParams := GetOrderParams(order)
-			PlaceOrder(ctx, client, orderParams, userName, order.Symbol)
+			s.PlaceOrder(ltp, ctx, client, orderParams, userName, order.Symbol)
 		}
 	}
 
-	//log.Println("Time to filter stocks ", time.Since(start))
-	//
-	//start = time.Now()
-	//for _, stock := range filteredStocks {
-	//	order := Execute(stock.Symbol, stock.Token, client, userName)
-	//	if order != nil {
-	//		orders = append(orders, order)
-	//	}
-	//}
-	//
-	//log.Println("Time to get orders ", time.Since(start))
-	//
-	//return orders
 }
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) *ORDER {
@@ -173,7 +163,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	}
 
 	PopulateIndicators(dataWithIndicators)
-	order := TrendFollowingRsi(dataWithIndicators, stockToken, symbol, userName, client)
+	order := DcForStocks(dataWithIndicators, stockToken, symbol, client)
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
@@ -181,11 +171,29 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	return &order
 }
 
-func PlaceOrder(ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) {
+func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) bool {
 	log.Printf("\norder params: for %v \n%v\n", userName, orderParams)
-	orderRes, _ := client.PlaceOrder(orderParams)
+	orderRes, err := client.PlaceOrder(orderParams)
+	if err != nil {
+		log.Printf("error: %v", err)
+		return false
+	}
+	log.Printf("\n order res %v", orderRes)
+	orders, _ := client.GetOrderBook()
+	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
+	if orderDetails.OrderStatus != "complete" {
+		time.Sleep(10000)
+	}
+	orders, _ = client.GetOrderBook()
+	orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
+	if orderDetails.OrderStatus != "complete" {
+		orderRes, _ := client.CancelOrder(orderParams.Variety, orderRes.OrderID)
+		log.Printf("Order Cancelled as it was pending%v", orderRes)
+		return false
+	}
 	log.Printf("order response %v for %v", orderRes, userName)
-	TrackOrders(ctx, client, symbol, userName)
+	s.TrackOrders(ltp, ctx, client, symbol, orderDetails.OrderID, orderParams)
+	return true
 }
 
 func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string, client *smartapigo.Client) ORDER {
@@ -236,6 +244,44 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	return order
 }
 
+func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartapigo.Client) ORDER {
+	idx := len(data.Data) - 1
+	rsi := data.Indicators["rsi"+"14"]
+	var order ORDER
+	order.OrderType = "None"
+	high, low := GetDCRange(*data, idx)
+	if high == 0.0 || low == 1000000.0 {
+		return order
+	}
+	obv := CalculateOBV(*data)
+
+	if data.Data[idx].Close > high && rsi[idx] > 35 && rsi[idx] < 75 && IsOBVIncreasing(obv) {
+		log.Println(" Buy Trade taken on Dc BreakOut:")
+		order = ORDER{
+			Spot:      high + 0.05,
+			Sl:        int(high * 0.01),
+			Tp:        int(high * 0.02),
+			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
+			OrderType: "BUY",
+		}
+
+	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 && IsOBVDecreasing(obv) {
+		log.Println(" SELL Trade taken on DC breakout ")
+		order = ORDER{
+			Spot:      low - 0.05,
+			Sl:        int(low * 0.01),
+			Tp:        int(low * 0.02),
+			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
+			OrderType: "SELL",
+		}
+
+	}
+	order.Symbol = symbol
+	order.Token = token
+
+	return order
+}
+
 func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 
 	orderParams := smartapigo.OrderParams{
@@ -266,63 +312,53 @@ func GetAmount(client *smartapigo.Client) float64 {
 	return amount
 }
 
-func TrackOrders(ctx context.Context, client *smartapigo.Client, symbol, userName string) {
-	isPrint := true
-	for {
-		select {
-		case <-ctx.Done():
-			log.Printf("context cancelled for user: %v\n", userName)
-			return
-		default:
+func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context, client *smartapigo.Client, symbol, orderId string, order smartapigo.OrderParams) {
 
-		}
+	var tokenInfo []models.TokenInfo
+	tokenInfo = append(tokenInfo, models.TokenInfo{models.NSECM, order.SymbolToken})
 
-		//orders, _ := client.GetOrderBook()
-		time.Sleep(1 * time.Second)
-		positions, error := client.GetPositions()
-		isAnyPostionOpen := false
-		if error != nil {
-			isAnyPostionOpen = true
-			continue
-		}
+	price, _ := strconv.ParseFloat(order.Price, 64)
+	target, _ := strconv.ParseFloat(order.SquareOff, 64)
+	squareoff := price + target
+	StopLoss, _ := strconv.ParseFloat(order.StopLoss, 64)
+	trailingStopLoss := price - StopLoss
+	orderPrice := price
 
-		totalPL := 0.0
-		//log.Printf("\n*************** Positions ************** \n")
-
-		for _, postion := range positions {
-			if isPrint {
-				log.Printf("\nposition for %v is %v\n", postion, userName)
-				isPrint = false
-			}
-			if postion.InstrumentType == "OPTIDX" {
-				continue
-			}
-			qty, err := strconv.Atoi(postion.NetQty)
-			if err != nil {
-				isAnyPostionOpen = true
-				continue
-			}
-			if qty != 0 {
-				isAnyPostionOpen = true
-			}
-			val, err2 := strconv.ParseFloat(postion.NetValue, 64)
-			if err2 != nil {
-				isAnyPostionOpen = true
-				continue
-			}
-			totalPL += val
-		}
-
-		if isAnyPostionOpen == false {
-			if totalPL <= -1000.0 || totalPL >= 2000.0 {
-				ForceCloseSession(client)
-			}
-			log.Printf("total P/L  %v", totalPL)
-			return
-		}
-
+	ordersList, _ := client.GetOrderBook()
+	if ordersList == nil {
+		return
 	}
 
+	slOrder := GetSLOrders(ordersList, order, orderId)
+	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
+	for data := range s.LiveData {
+		LTP := float64(data.LastTradedPrice / 100.0)
+		fmt.Println("P/L: - ", LTP-orderPrice)
+		if LTP >= price+2.0 {
+			trailingStopLoss += 2.0
+			price += 2.0
+			modifyOrderParams := getModifyOrderParams(trailingStopLoss, order, slOrder[0].OrderID)
+			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
+			for i := 0; i < 3; i++ {
+				if err1 == nil {
+					break
+				}
+				log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
+				orderRes, err1 = client.ModifyOrder(modifyOrderParams)
+			}
+			if err1 != nil {
+				log.Printf("\n Error in modifying SL: %v \n", err1)
+			} else {
+				log.Printf("SL Modified %v", orderRes)
+			}
+
+		}
+		if LTP <= trailingStopLoss || LTP >= squareoff {
+			ltp.STOP()
+			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
+			break
+		}
+	}
 }
 
 func CalculatePosition(buyPrice, sl float64, client *smartapigo.Client) int {
