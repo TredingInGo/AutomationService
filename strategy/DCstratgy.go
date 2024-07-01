@@ -11,7 +11,7 @@ import (
 )
 
 func (s *strategy) DCAlgo(ltp smartStream.SmartStream, client *smartapigo.Client) {
-	maxTrade :=
+	maxTrade := 7
 	for {
 		isClosed := CloseSession(client)
 		if isClosed || maxTrade == 0 {
