@@ -9,7 +9,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (s *strategy) DCAlgo(ltp smartStream.SmartStream, client *smartapigo.Client) {
@@ -45,7 +44,7 @@ func (s *strategy) ExecuteDCAlgo(ltp smartStream.SmartStream, expiry, index stri
 	} else if index == "BANKNIFTY" {
 		ITMStrike = bankNifty * 4
 	}
-	callSpot := ATMstrike + float64(ITMStrike)
+	callSpot := ATMstrike - float64(ITMStrike)
 	callSymbol := index + expiry + strconv.Itoa(int(callSpot)) + call
 	callToken := GetFOToken(callSymbol, nfo)
 	callSideITMTick := GetStockTick(client, callToken, "FIVE_MINUTE", nfo)
@@ -127,18 +126,6 @@ func (s *strategy) PlaceDcOrder(ltp smartStream.SmartStream, client *smartapigo.
 		return false
 	}
 	log.Printf("\n order res %v", orderRes)
-	orders, _ := client.GetOrderBook()
-	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
-	if orderDetails.OrderStatus != "complete" {
-		time.Sleep(10000)
-	}
-	orders, _ = client.GetOrderBook()
-	orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
-	if orderDetails.OrderStatus != "complete" {
-		orderRes, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
-		log.Printf("Order Cancelled as it was pending%v", orderRes)
-		return false
-	}
 	s.TrackOrdersFoDc(ltp, client, order.SymbolToken, "User", orderRes.OrderID, order)
 	return true
 
@@ -299,8 +286,7 @@ func (s *strategy) TrackOrdersFoDc(ltp smartStream.SmartStream, client *smartapi
 		return
 	}
 
-	slOrder := GetSLOrder(ordersList, order, orderId)
-
+	slOrders := GetSLOrders(ordersList, order, orderId)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100.0)
@@ -308,19 +294,21 @@ func (s *strategy) TrackOrdersFoDc(ltp smartStream.SmartStream, client *smartapi
 		if LTP >= price+5.0 {
 			trailingStopLoss += 5.0
 			price += 5.0
-			modifyOrderParams := getModifyOrderParams(trailingStopLoss, order, slOrder.OrderID)
-			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
-			for i := 0; i < 3; i++ {
-				if err1 == nil {
-					break
+			for _, slOrder := range slOrders {
+				modifyOrderParams := getModifyOrderParams(trailingStopLoss, slOrder, slOrder.OrderID, order.TradingSymbol)
+				orderRes, err1 := client.ModifyOrder(modifyOrderParams)
+				for i := 0; i < 3; i++ {
+					if err1 == nil {
+						break
+					}
+					log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
+					orderRes, err1 = client.ModifyOrder(modifyOrderParams)
 				}
-				log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
-				orderRes, err1 = client.ModifyOrder(modifyOrderParams)
-			}
-			if err1 != nil {
-				log.Printf("\n Error in modifying SL: %v \n", err1)
-			} else {
-				log.Printf("SL Modified %v", orderRes)
+				if err1 != nil {
+					log.Printf("\n Error in modifying SL: %v \n", err1)
+				} else {
+					log.Printf("SL Modified %v", orderRes)
+				}
 			}
 
 		}

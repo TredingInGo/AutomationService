@@ -182,7 +182,7 @@ func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, 
 	orders, _ := client.GetOrderBook()
 	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
 	if orderDetails.OrderStatus != "complete" {
-		time.Sleep(10000)
+		time.Sleep(20 * time.Second)
 	}
 	orders, _ = client.GetOrderBook()
 	orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
@@ -258,9 +258,9 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 	if data.Data[idx].Close > high && rsi[idx] > 35 && rsi[idx] < 75 && IsOBVIncreasing(obv) {
 		log.Println(" Buy Trade taken on Dc BreakOut:")
 		order = ORDER{
-			Spot:      high + 0.05,
-			Sl:        int(high * 0.01),
-			Tp:        int(high * 0.02),
+			Spot:      data.Data[idx].Close + 0.05,
+			Sl:        int(data.Data[idx].Close * 0.01),
+			Tp:        int(data.Data[idx].Close * 0.02),
 			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
 			OrderType: "BUY",
 		}
@@ -268,9 +268,9 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 && IsOBVDecreasing(obv) {
 		log.Println(" SELL Trade taken on DC breakout ")
 		order = ORDER{
-			Spot:      low - 0.05,
-			Sl:        int(low * 0.01),
-			Tp:        int(low * 0.02),
+			Spot:      data.Data[idx].Close - 0.05,
+			Sl:        int(data.Data[idx].Close * 0.01),
+			Tp:        int(data.Data[idx].Close * 0.02),
 			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
 			OrderType: "SELL",
 		}
@@ -322,6 +322,9 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 	squareoff := price + target
 	StopLoss, _ := strconv.ParseFloat(order.StopLoss, 64)
 	trailingStopLoss := price - StopLoss
+	if order.OrderType == "SELL" {
+		trailingStopLoss = price + StopLoss
+	}
 	orderPrice := price
 
 	ordersList, _ := client.GetOrderBook()
@@ -329,31 +332,34 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 		return
 	}
 
-	slOrder := GetSLOrders(ordersList, order, orderId)
+	slOrders := GetSLOrders(ordersList, order, orderId)
 	go ltp.Connect(s.LiveData, models.SNAPQUOTE, tokenInfo)
 	for data := range s.LiveData {
 		LTP := float64(data.LastTradedPrice / 100.0)
 		fmt.Println("P/L: - ", LTP-orderPrice)
-		if LTP >= price+2.0 {
+		if LTP >= price+2.0 && order.OrderType == "BUY" {
 			trailingStopLoss += 2.0
 			price += 2.0
-			modifyOrderParams := getModifyOrderParams(trailingStopLoss, order, slOrder[0].OrderID)
-			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
-			for i := 0; i < 3; i++ {
-				if err1 == nil {
-					break
-				}
-				log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
-				orderRes, err1 = client.ModifyOrder(modifyOrderParams)
-			}
-			if err1 != nil {
-				log.Printf("\n Error in modifying SL: %v \n", err1)
-			} else {
-				log.Printf("SL Modified %v", orderRes)
+			for _, slOrder := range slOrders {
+				modifyOrderParams := getModifyOrderParams(trailingStopLoss, slOrder, slOrder.OrderID, order.TradingSymbol)
+				ModifyOrderWithRetry(modifyOrderParams, client)
 			}
 
 		}
 		if LTP <= trailingStopLoss || LTP >= squareoff {
+			ltp.STOP()
+			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
+			break
+		} else if LTP <= price-2.0 && order.OrderType == "SELL" {
+			trailingStopLoss -= 2.0
+			price -= 2.0
+			for _, slOrder := range slOrders {
+				modifyOrderParams := getModifyOrderParams(trailingStopLoss, slOrder, slOrder.OrderID, order.TradingSymbol)
+				ModifyOrderWithRetry(modifyOrderParams, client)
+			}
+
+		}
+		if LTP >= trailingStopLoss || LTP <= squareoff {
 			ltp.STOP()
 			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
 			break
@@ -535,4 +541,19 @@ func getVwap(data []smartapigo.CandleResponse, period int) float64 {
 		cumTypical = cumTypical + (((data[i].High + data[i].Low + data[i].Close) / 3) * float64(data[i].Volume))
 	}
 	return cumTypical / cumVol
+}
+func ModifyOrderWithRetry(modifyOrderParams smartapigo.ModifyOrderParams, client *smartapigo.Client) {
+	orderRes, err1 := client.ModifyOrder(modifyOrderParams)
+	for i := 0; i < 3; i++ {
+		if err1 == nil {
+			break
+		}
+		log.Printf("\n Error in modifying SL: %v  retry -> %v \n", err1, i+1)
+		orderRes, err1 = client.ModifyOrder(modifyOrderParams)
+	}
+	if err1 != nil {
+		log.Printf("\n Error in modifying SL: %v \n", err1)
+	} else {
+		log.Printf("SL Modified %v", orderRes)
+	}
 }

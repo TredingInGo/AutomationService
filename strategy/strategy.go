@@ -173,7 +173,7 @@ func (s *strategy) ExecuteAlgo(ltp smartStream.SmartStream, expiry, index string
 		if LTP >= price+10.0 {
 			trailingStopLoss += 10
 			price += 10
-			modifyOrderParams := getModifyOrderParams(trailingStopLoss, orderParams, slOrder.OrderID)
+			modifyOrderParams := getModifyOrderParams(trailingStopLoss, slOrder, slOrder.OrderID, orderParams.TradingSymbol)
 			orderRes, err1 := client.ModifyOrder(modifyOrderParams)
 			for i := 0; i < 3; i++ {
 				if err1 == nil {
@@ -373,7 +373,7 @@ func GetSLOrders(orders smartapigo.Orders, orderParams smartapigo.OrderParams, o
 	return slOrders
 }
 
-func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId string) smartapigo.ModifyOrderParams {
+func getModifyOrderParams(sl float64, order smartapigo.Order, orderId string, symbol string) smartapigo.ModifyOrderParams {
 	return smartapigo.ModifyOrderParams{
 		Variety:       order.Variety,
 		OrderID:       orderId,
@@ -382,7 +382,7 @@ func getModifyOrderParams(sl float64, order smartapigo.OrderParams, orderId stri
 		Duration:      order.Duration,
 		Price:         strconv.FormatFloat(sl, 'f', 2, 64),
 		Quantity:      order.Quantity,
-		TradingSymbol: order.TradingSymbol,
+		TradingSymbol: symbol,
 		SymbolToken:   order.SymbolToken,
 		Exchange:      nfo,
 		TriggerPrice:  strconv.FormatFloat(sl, 'f', 2, 64),
