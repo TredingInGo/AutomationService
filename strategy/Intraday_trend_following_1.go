@@ -82,7 +82,9 @@ func (s *strategy) TrendFollowingStretgy(ltp smartStream.SmartStream, ctx contex
 		//	CloseSession(client)
 		//	Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
 		//}
-
+		if IsEquityPostionOpen(client) {
+			continue
+		}
 		isClosed := CloseSession(client)
 		if isClosed {
 			log.Printf("Todays Session Closed")
@@ -97,27 +99,11 @@ func (s *strategy) TrendFollowingStretgy(ltp smartStream.SmartStream, ctx contex
 		}
 
 		s.getEligibleStocks(ltp, ctx, stockList, client, userProfile.UserName)
-		// get most eligible stock for trade
 
-		//sort.Slice(eligibleStocks, func(i, j int) bool {
-		//	return eligibleStocks[i].Score > eligibleStocks[j].Score
-		//})
-		//
-		//for i := 0; i < len(eligibleStocks); i++ {
-		//	log.Printf("stock %v : %v\n", i+1, *eligibleStocks[i])
-		//}
-		//
-		//if len(eligibleStocks) > 0 {
-		//	orderParams := GetOrderParams(eligibleStocks[0])
-		//	PlaceOrder(client, orderParams, userProfile.UserName, eligibleStocks[0].Symbol)f
-		//}
 	}
 }
 
 func (s *strategy) getEligibleStocks(ltp smartStream.SmartStream, ctx context.Context, stocks []Symbols, client *smartapigo.Client, userName string) {
-	//filteredStocks := []*ORDER{}
-	//orders := []*ORDER{}
-	//start := time.Now()
 
 	log.Println("running getEligibleStocks for: ", userName, " at: ", time.Now().Format("2006-01-02 15:04:05"))
 	for _, stock := range stocks {
@@ -144,7 +130,7 @@ func (s *strategy) getEligibleStocks(ltp smartStream.SmartStream, ctx context.Co
 		order := Execute(param.Token, param.Symbol, client, param.UserName)
 		if order != nil {
 			orderParams := GetOrderParams(order)
-			s.PlaceOrder(ltp, ctx, client, orderParams, userName, order.Symbol)
+			s.PlaceOrder(ltp, ctx, client, orderParams, userName, order.Symbol, order.Spot)
 		}
 	}
 
@@ -171,7 +157,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	return &order
 }
 
-func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string) bool {
+func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, client *smartapigo.Client, orderParams smartapigo.OrderParams, userName, symbol string, spot float64) bool {
 	log.Printf("\norder params: for %v \n%v\n", userName, orderParams)
 	orderRes, err := client.PlaceOrder(orderParams)
 	if err != nil {
@@ -180,19 +166,21 @@ func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, 
 	}
 	log.Printf("\n order res %v", orderRes)
 	orders, _ := client.GetOrderBook()
-	orderDetails := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
-	if orderDetails.OrderStatus != "complete" {
-		time.Sleep(20 * time.Second)
+	currentOrder := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
+	for currentOrder.Status != "complete" {
+		currentTick := GetStockTick(client, orderParams.SymbolToken, "FIVE_MINUTE", nfo)
+		lastTradedPrice := currentTick[len(currentTick)-1].Close
+		if lastTradedPrice > spot+(spot*0.05) {
+			cancleOrderResponce, _ := client.CancelOrder(orderParams.Variety, orderRes.OrderID)
+			fmt.Println("Order Cancelled", cancleOrderResponce)
+			return false
+		}
+		orders, _ = client.GetOrderBook()
+		currentOrder = GetCurrentOrder(orders, orderRes.OrderID)
 	}
-	orders, _ = client.GetOrderBook()
-	orderDetails = GetOrderDetailsByOrderId(orderRes.OrderID, orders)
-	if orderDetails.OrderStatus != "complete" {
-		orderRes, _ := client.CancelOrder(orderParams.Variety, orderRes.OrderID)
-		log.Printf("Order Cancelled as it was pending%v", orderRes)
-		return false
-	}
+
 	log.Printf("order response %v for %v", orderRes, userName)
-	s.TrackOrders(ltp, ctx, client, symbol, orderDetails.OrderID, orderParams)
+	s.TrackOrders(ltp, ctx, client, symbol, currentOrder.OrderID, orderParams)
 	return true
 }
 
@@ -247,30 +235,34 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartapigo.Client) ORDER {
 	idx := len(data.Data) - 1
 	rsi := data.Indicators["rsi"+"14"]
+	adx := data.Adx["Adx20"].Adx
+	ema21 := data.Indicators["ema"+"21"]
 	var order ORDER
 	order.OrderType = "None"
+
 	high, low := GetDCRange(*data, idx)
-	if high == 0.0 || low == 1000000.0 {
+
+	if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
 		return order
 	}
 	obv := CalculateOBV(*data)
 
-	if data.Data[idx].Close > high && rsi[idx] > 35 && rsi[idx] < 75 && IsOBVIncreasing(obv) {
+	if data.Data[idx].Close > high && IsOBVIncreasing(obv) && ema21[idx] > data.Data[idx].Close {
 		log.Println(" Buy Trade taken on Dc BreakOut:")
 		order = ORDER{
 			Spot:      data.Data[idx].Close + 0.05,
-			Sl:        int(data.Data[idx].Close * 0.01),
-			Tp:        int(data.Data[idx].Close * 0.02),
+			Sl:        CalculateDynamicSL(high, low),
+			Tp:        CalculateDynamicTP(high, low),
 			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 && IsOBVDecreasing(obv) {
+	} else if data.Data[idx].Close < low && IsOBVDecreasing(obv) && ema21[idx] < data.Data[idx].Close {
 		log.Println(" SELL Trade taken on DC breakout ")
 		order = ORDER{
 			Spot:      data.Data[idx].Close - 0.05,
-			Sl:        int(data.Data[idx].Close * 0.01),
-			Tp:        int(data.Data[idx].Close * 0.02),
+			Sl:        CalculateDynamicSL(high, low),
+			Tp:        CalculateDynamicTP(high, low),
 			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
 			OrderType: "SELL",
 		}
@@ -280,6 +272,21 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 	order.Token = token
 
 	return order
+}
+
+func CalculateDynamicSL(high, low float64) int {
+	// Calculate dynamic stop-loss based on volatility or other criteria
+	return int(math.Abs(high-low) * 0.5) // Example: 50% of the channel range
+}
+
+func CalculateDynamicTP(high, low float64) int {
+	// Calculate dynamic take-profit based on volatility or other criteria
+	return int(math.Abs(high-low) * 1.5) // Example: 150% of the channel range
+}
+
+func CalculateDynamicQuantity(close float64) int {
+	// Calculate dynamic quantity based on risk management rules
+	return int(100000 / close) // Example: allocate a fixed amount of capital per trade
 }
 
 func GetOrderParams(order *ORDER) smartapigo.OrderParams {
@@ -556,4 +563,37 @@ func ModifyOrderWithRetry(modifyOrderParams smartapigo.ModifyOrderParams, client
 	} else {
 		log.Printf("SL Modified %v", orderRes)
 	}
+}
+
+func IsEquityPostionOpen(client *smartapigo.Client) bool {
+	time.Sleep(1 * time.Second)
+	positions, error := client.GetPositions()
+	isAnyPostionOpen := false
+	if error != nil {
+		return true
+	}
+	totalPL := 0.0
+	for _, postion := range positions {
+
+		if postion.InstrumentType == "OPTIDX" {
+			continue
+		}
+		qty, err := strconv.Atoi(postion.NetQty)
+		if err != nil {
+			isAnyPostionOpen = true
+			continue
+		}
+		if qty != 0 {
+			isAnyPostionOpen = true
+		}
+		val, err2 := strconv.ParseFloat(postion.NetValue, 64)
+		if err2 != nil {
+			isAnyPostionOpen = true
+			continue
+		}
+		totalPL += val
+	}
+
+	return isAnyPostionOpen
+
 }

@@ -130,19 +130,19 @@ func main() {
 			return
 		}
 		mutex.Lock()
-		userSession, ok := userSessions[clientCode]
+		userSession, ok := activeUsers.Get(clientCode)
 		mutex.Unlock()
 		if !ok {
 			writer.Write([]byte("clientCode not found"))
 			writer.WriteHeader(400)
 			return
 		}
-		if userSession.session.FeedToken == "" {
+		if userSession.Session.FeedToken == "" {
 			log.Println("feed token not set")
 			return
 		}
 		db := Simulation.Connect()
-		stockResponses := strategy.SwingScreener(userSession.apiClient, db)
+		stockResponses := strategy.SwingScreener(userSession.ApiClient, db)
 		jsonResponse, err := json.Marshal(stockResponses)
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)

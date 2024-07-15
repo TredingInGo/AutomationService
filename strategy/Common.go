@@ -113,8 +113,8 @@ func GetStockTickForSwing(client *smartapigo.Client, symbolToken string, timeFra
 func GetHistoryData(client *smartapigo.Client, symbolToken string, timeFrame string) []smartapigo.CandleResponse {
 	tempTime := time.Now()
 	toDate := tempTime.Format("2006-01-02 15:04")
-	fromDate := tempTime.Add(time.Hour * 24 * -200).Format("2006-01-02 15:04")
-	tempTime = tempTime.Add(time.Hour * 24 * -200)
+	fromDate := tempTime.Add(time.Hour * 24 * -700).Format("2006-01-02 15:04")
+	tempTime = tempTime.Add(time.Hour * 24 * -700)
 	tempHistoryData, _ := client.GetCandleData(smartapigo.CandleParams{
 		Exchange:    "NSE",
 		SymbolToken: symbolToken,

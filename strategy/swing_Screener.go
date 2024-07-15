@@ -24,7 +24,7 @@ func SwingScreener(client *smartapigo.Client, db *sql.DB) []StockResponse {
 	stockList := LoadStockListForSwing(db)
 	log.Printf("*************** LIST FOR SWING TRADING *****************")
 	var swingStocks []StockResponse
-	var timeFrames = []string{"ONE_HOUR"}
+	var timeFrames = []string{"ONE_DAY"}
 	for _, timeFrame := range timeFrames {
 		for _, stock := range stockList {
 
@@ -56,7 +56,8 @@ func ExecuteScreener(symbol, stockToken string, client *smartapigo.Client, timeF
 	}
 
 	PopulateIndicators(dataWithIndicators)
-	order := TrendFollowingRsiForSwing(dataWithIndicators, stockToken, symbol, "dummy", client)
+	//order := TrendFollowingRsiForSwing(dataWithIndicators, stockToken, symbol, "dummy", client)
+	order := DcScreener(*dataWithIndicators, stockToken, symbol, "dummy", client)
 	if order.OrderType == "None" {
 		return nil
 	}
@@ -151,4 +152,58 @@ func GetAvgVolume(data []smartapigo.CandleResponse, day int) float64 {
 		sum += data[i].Volume
 	}
 	return float64(sum) / float64(day)
+}
+
+func DcScreener(data DataWithIndicators, token, symbol, username string, client *smartapigo.Client) ORDER {
+	idx := len(data.Data) - 1
+	var order ORDER
+	order.OrderType = "None"
+	if idx <= 100 {
+		return order
+	}
+	high, low := GetORBRange(data, idx, 100)
+	obv := CalculateOBV(data)
+
+	if high == 0.0 || low == 1000000.0 {
+		return order
+	}
+	if data.Data[idx].Close > high && IsOBVIncreasing(obv) {
+		order = ORDER{
+			Spot:      data.Data[idx].Close + 0.05,
+			Sl:        int(high - low),
+			Tp:        int((high - low) * 3),
+			Quantity:  1,
+			OrderType: "BUY",
+			Token:     "1270",
+		}
+	}
+
+	//if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 && strategy.IsOBVDecreasing(obv) {
+	//	order = strategy.ORDER{
+	//		Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close - 0.05,
+	//		Sl:        int(dataWithIndicatorsMap[stockToken].Data[*idx].Close * 0.05),
+	//		Tp:        int(dataWithIndicatorsMap[stockToken].Data[*idx].Close * 0.25),
+	//		Quantity:  int(Amount) / int(dataWithIndicatorsMap[stockToken].Data[*idx].Close),
+	//		OrderType: "SELL",
+	//		Token:     "4963",
+	//	}
+	//}
+
+	if order.OrderType == "None" || order.Quantity < 1 {
+		return order
+	}
+	//fmt.Println("OrderPlaced ", order)
+	return order
+}
+
+func GetORBRange(data DataWithIndicators, idx int, dcPeriod int) (float64, float64) {
+
+	high := 0.0
+	low := 1000000.0
+
+	for i := idx - 1; i > idx-dcPeriod; i-- {
+		high = math.Max(data.Data[i].High, high)
+		low = math.Min(data.Data[i].Low, low)
+	}
+	return high, low
 }

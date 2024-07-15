@@ -9,6 +9,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *strategy) DCAlgo(ltp smartStream.SmartStream, client *smartapigo.Client) {
@@ -18,6 +19,9 @@ func (s *strategy) DCAlgo(ltp smartStream.SmartStream, client *smartapigo.Client
 		if isClosed || maxTrade == 0 {
 			log.Printf("Todays Session Closed")
 			return
+		}
+		if IsOptionPostionOpen(client) {
+			continue
 		}
 		s.ExecuteDCAlgo(ltp, niftyExpairy, "NIFTY", client, &maxTrade)
 
@@ -88,7 +92,7 @@ func (s *strategy) ExecuteDCAlgo(ltp smartStream.SmartStream, expiry, index stri
 
 	}
 	orderParams := getDcOrderParams(orderInfo)
-	isTradePlaced := s.PlaceDcOrder(ltp, client, orderParams)
+	isTradePlaced := s.PlaceDcOrder(ltp, client, orderParams, order.price)
 	if isTradePlaced {
 		*maxTrade--
 	}
@@ -119,13 +123,29 @@ func getATMStrikeFoDc(client *smartapigo.Client, index string) ([]smartapigo.Can
 	return nil, 0
 }
 
-func (s *strategy) PlaceDcOrder(ltp smartStream.SmartStream, client *smartapigo.Client, order smartapigo.OrderParams) bool {
+func (s *strategy) PlaceDcOrder(ltp smartStream.SmartStream, client *smartapigo.Client, order smartapigo.OrderParams, spot float64) bool {
 	orderRes, err := client.PlaceOrder(order)
 	if err != nil {
 		log.Printf("error: %v", err)
 		return false
 	}
 	log.Printf("\n order res %v", orderRes)
+
+	// Cancel Order if order is not full filled
+
+	ordersList, _ := client.GetOrderBook()
+	currentOrder := GetCurrentOrder(ordersList, orderRes.OrderID)
+	for currentOrder.Status != "complete" {
+		currentTick := GetStockTick(client, order.SymbolToken, "FIVE_MINUTE", nfo)
+		lastTradedPrice := currentTick[len(currentTick)-1].Close
+		if lastTradedPrice > spot+5 {
+			cancleOrderResponce, _ := client.CancelOrder(order.Variety, orderRes.OrderID)
+			fmt.Println("Order Cancelled", cancleOrderResponce)
+			return false
+		}
+		ordersList, _ = client.GetOrderBook()
+		currentOrder = GetCurrentOrder(ordersList, orderRes.OrderID)
+	}
 	s.TrackOrdersFoDc(ltp, client, order.SymbolToken, "User", orderRes.OrderID, order)
 	return true
 
@@ -182,17 +202,19 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 	idx := len(data.Data) - 1
 	callIdx := len(callData.Data) - 1
 	putIdx := len(putData.Data) - 1
+
 	rsi := data.Indicators["rsi"+"14"]
 	var order LegInfo
 	order.orderType = "None"
 	high, low := GetDCRange(*data, idx)
+
 	if high == 0.0 || low == 1000000.0 {
 		return order
 	}
-	//obvForCall := CalculateOBV(*callData)
-	//obvForPut :=  CalculateOBV(*putData)
+	obvForCall := CalculateOBV(*callData)
+	obvForPut := CalculateOBV(*putData)
 
-	if data.Data[idx].Close > high && rsi[idx] > 35 && rsi[idx] < 75 {
+	if data.Data[idx-1].Close > high && rsi[idx] > 55 && rsi[idx] < 75 && IsOBVIncreasing(obvForCall) {
 		log.Println(" CALL Trade taken on Dc BreakOut:")
 		return LegInfo{
 			price:     callData.Data[callIdx].Close + 0.5,
@@ -200,10 +222,10 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			orderType: "BUY",
 			token:     callToken,
 			symbol:    callSymbol,
-			quantity:  4,
+			quantity:  2,
 		}
 
-	} else if data.Data[idx].Close < low && rsi[idx] > 10 && rsi[idx] < 30 {
+	} else if data.Data[idx-1].Close < low && rsi[idx] > 30 && rsi[idx] < 40 && IsOBVDecreasing(obvForPut) {
 		log.Println(" PUT Trade taken on DC breakout ")
 		return LegInfo{
 			price:     putData.Data[putIdx].Close + 0.5,
@@ -211,7 +233,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			orderType: "BUY",
 			token:     putToken,
 			symbol:    putSymbol,
-			quantity:  4,
+			quantity:  2,
 		}
 
 	}
@@ -318,4 +340,45 @@ func (s *strategy) TrackOrdersFoDc(ltp smartStream.SmartStream, client *smartapi
 			break
 		}
 	}
+}
+func IsOptionPostionOpen(client *smartapigo.Client) bool {
+	time.Sleep(1 * time.Second)
+	positions, error := client.GetPositions()
+	isAnyPostionOpen := false
+	if error != nil {
+		return true
+	}
+	totalPL := 0.0
+	for _, postion := range positions {
+
+		if postion.InstrumentType != "OPTIDX" {
+			continue
+		}
+		qty, err := strconv.Atoi(postion.NetQty)
+		if err != nil {
+			isAnyPostionOpen = true
+			continue
+		}
+		if qty != 0 {
+			isAnyPostionOpen = true
+		}
+		val, err2 := strconv.ParseFloat(postion.NetValue, 64)
+		if err2 != nil {
+			isAnyPostionOpen = true
+			continue
+		}
+		totalPL += val
+	}
+
+	return isAnyPostionOpen
+
+}
+
+func GetCurrentOrder(orders []smartapigo.Order, orderId string) smartapigo.Order {
+	for _, order := range orders {
+		if order.OrderID == orderId {
+			return order
+		}
+	}
+	return orders[0]
 }

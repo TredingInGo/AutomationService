@@ -37,18 +37,21 @@ var amountChange []float64
 var trades []int
 
 func BackTest(client *smartapigo.Client, db *sql.DB) {
-	stock := strategy.Symbols{
-		"4963",
-		"ICICIBANK",
-	}
+
+	stock := strategy.LoadStockList(db)
 	var stockList []strategy.Symbols
-	stockList = append(stockList, stock)
+	for i := 0; i < 20; i++ {
+		stockList = append(stockList, stock[i])
+
+	}
 	populateStockData(stockList, client)
+
 	//rsi, ema,
 	maxProfit := initTrade()
 	Dc := 0
-	for i := 20; i < 21; i++ {
-		Amount = 100000
+
+	for i := 20; i < 101; i++ {
+		Amount = 1000000
 		tradeReport = initTrade()
 		executeBacktest(client, stockList, i, false)
 		fmt.Println("Current Dc = ", i)
@@ -90,10 +93,10 @@ func populateStockTick(client *smartapigo.Client, symbolToken string, timeFrame 
 
 	tempTime := time.Now()
 	var candles []smartapigo.CandleResponse
-	for i := 0; i < 27; i++ {
+	for i := 0; i < 10; i++ {
 		toDate := tempTime.Format("2006-01-02 15:04")
-		fromDate := tempTime.Add(time.Hour * 24 * -100).Format("2006-01-02 15:04")
-		tempTime = tempTime.Add(time.Hour * 24 * -100)
+		fromDate := tempTime.Add(time.Hour * 24 * -60).Format("2006-01-02 15:04")
+		tempTime = tempTime.Add(time.Hour * 24 * -60)
 
 		// set timeout
 		client.SetTimeout(5 * time.Second)
@@ -167,31 +170,38 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 		return nil
 	}
 	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx, dcPeriod)
+
+	rsi := dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx]
+	ema := dataWithIndicatorsMap[stockToken].Indicators["ema50"][*idx]
+	ema7 := dataWithIndicatorsMap[stockToken].Indicators["ema7"][*idx]
+	ema22 := dataWithIndicatorsMap[stockToken].Indicators["ema22"][*idx]
+	adx := dataWithIndicatorsMap[stockToken].Adx["Adx20"].Adx[*idx]
 	obv := strategy.CalculateOBV(dataWithIndicatorsMap[stockToken])
 	var order strategy.ORDER
 	order.OrderType = "None"
-	if high == 0.0 || low == 1000000.0 {
+	if high == 0.0 || low == 1000000.0 || rsi > 75 || rsi < 30 || adx < 25 {
 		return &order
 	}
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 35 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 75 && strategy.IsOBVIncreasing(obv) {
+
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close > high && dataWithIndicatorsMap[stockToken].Data[*idx].Close > ema && ema7 > ema22 && strategy.IsOBVDecreasing(obv) {
 		order = strategy.ORDER{
-			Spot:      high + 0.05,
-			Sl:        int(high * 0.01),
-			Tp:        int(high * 0.02),
-			Quantity:  1,
+			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close + 0.05,
+			Sl:        CalculateDynamicSL(high, low),
+			Tp:        CalculateDynamicTP(high, low),                                                // Dynamic Take-Profit
+			Quantity:  CalculateDynamicQuantity(dataWithIndicatorsMap[stockToken].Data[*idx].Close), // Dynamic Quantity
 			OrderType: "BUY",
-			Token:     "4963",
+			Token:     stockToken,
 		}
 	}
 
-	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] < 30 && dataWithIndicatorsMap[stockToken].Indicators["rsi14"][*idx] > 10 && strategy.IsOBVDecreasing(obv) {
+	if dataWithIndicatorsMap[stockToken].Data[*idx].Close < low && dataWithIndicatorsMap[stockToken].Data[*idx].Close < ema && ema7 < ema22 && strategy.IsOBVDecreasing(obv) {
 		order = strategy.ORDER{
-			Spot:      low - 0.05,
-			Sl:        int(low * 0.01),
-			Tp:        int(low * 0.02),
-			Quantity:  1,
+			Spot:      dataWithIndicatorsMap[stockToken].Data[*idx].Close - 0.05,
+			Sl:        CalculateDynamicSL(high, low),
+			Tp:        CalculateDynamicTP(high, low),
+			Quantity:  CalculateDynamicQuantity(dataWithIndicatorsMap[stockToken].Data[*idx].Close),
 			OrderType: "SELL",
-			Token:     "4963",
+			Token:     stockToken,
 		}
 	}
 
@@ -201,9 +211,20 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	//fmt.Println("OrderPlaced ", order)
 	return &order
 }
-func calculateQuantity() int {
-	qty := Amount / 25
-	return int(qty)
+
+func CalculateDynamicSL(high, low float64) int {
+	// Calculate dynamic stop-loss based on volatility or other criteria
+	return int(math.Abs(high-low) * 0.5) // Example: 50% of the channel range
+}
+
+func CalculateDynamicTP(high, low float64) int {
+	// Calculate dynamic take-profit based on volatility or other criteria
+	return int(math.Abs(high-low) * 1.5) // Example: 150% of the channel range
+}
+
+func CalculateDynamicQuantity(close float64) int {
+	// Calculate dynamic quantity based on risk management rules
+	return int(100000 / close) // Example: allocate a fixed amount of capital per trade
 }
 
 func GetORBRange(data strategy.DataWithIndicators, idx *int, dcPeriod int) (float64, float64) {
@@ -321,7 +342,7 @@ func calculatePosition(price float64) int {
 }
 
 func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, orderType string) float64 {
-	trailingStopLoss := sl
+	//trailingStopLoss := sl
 	for *idx < len(data)-1 {
 		currentTime := data[*idx].Timestamp
 		compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 15, 15, 0, 0, currentTime.Location())
@@ -341,8 +362,8 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 				return sl - spot
 			}
 			if spot+5 < data[*idx].Close {
-				trailingStopLoss += 5
-				spot += 5
+				//trailingStopLoss += 5
+				//spot += 5
 				//sl = trailingStopLoss
 			}
 		}
@@ -355,8 +376,8 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 				return spot - tp
 			}
 			if spot-5 > data[*idx].Close {
-				trailingStopLoss -= 5
-				spot -= 5
+				//trailingStopLoss -= 5
+				//spot -= 5
 				//sl = trailingStopLoss
 			}
 		}
@@ -386,7 +407,7 @@ func printCurrentTradeReport() {
 	log.Printf("MaxContinousLoss: %v\n", tradeReport.maxContinousloss)
 	log.Printf("ProfitCount: %v\n", tradeReport.profitCount)
 	log.Printf("LossCount: %v\n", tradeReport.lossCount)
-	log.Printf("Amount: %v\n", tradeReport.amount)
+	log.Printf("Amount: %v\n", int64(tradeReport.amount))
 	log.Printf("TotalAmount: %v\n", Amount)
 }
 
