@@ -79,9 +79,9 @@ func (h *Handler) starter() {
 					"clientCode": creds.clientCode,
 				}
 
-				resp, err = post(host, "/option", data)
+				resp, err = post(host, "/intra-day", data)
 				if err != nil {
-					log.Println("Error while starting option automatically for clientID ", creds.clientCode,
+					log.Println("Error while starting equity intra-day automatically for clientID ", creds.clientCode,
 						" error ", err)
 					continue
 				}

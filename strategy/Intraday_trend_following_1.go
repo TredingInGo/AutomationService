@@ -245,9 +245,8 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 	if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
 		return order
 	}
-	obv := CalculateOBV(*data)
 
-	if data.Data[idx].Close > high && IsOBVIncreasing(obv) && ema21[idx] > data.Data[idx].Close {
+	if data.Data[idx].Close > high && ema21[idx] < data.Data[idx].Close {
 		log.Println(" Buy Trade taken on Dc BreakOut:")
 		order = ORDER{
 			Spot:      data.Data[idx].Close + 0.05,
@@ -257,7 +256,7 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].Close < low && IsOBVDecreasing(obv) && ema21[idx] < data.Data[idx].Close {
+	} else if data.Data[idx].Close < low && ema21[idx] > data.Data[idx].Close {
 		log.Println(" SELL Trade taken on DC breakout ")
 		order = ORDER{
 			Spot:      data.Data[idx].Close - 0.05,
@@ -331,6 +330,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 	trailingStopLoss := price - StopLoss
 	if order.OrderType == "SELL" {
 		trailingStopLoss = price + StopLoss
+		squareoff = price - target
 	}
 	orderPrice := price
 
@@ -353,7 +353,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 			}
 
 		}
-		if LTP <= trailingStopLoss || LTP >= squareoff {
+		if (order.OrderType == "BUY" && (LTP <= trailingStopLoss || LTP >= squareoff)) || (order.OrderType == "SELL" && (LTP >= trailingStopLoss || LTP <= squareoff)) {
 			ltp.STOP()
 			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
 			break
