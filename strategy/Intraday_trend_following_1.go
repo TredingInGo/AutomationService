@@ -237,37 +237,34 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartapigo.Client) ORDER {
 	idx := len(data.Data) - 1
-	//rsi := data.Indicators["rsi"+"14"]
-	//adx := data.Adx["Adx20"].Adx
-	ema21 := data.Indicators["ema"+"21"]
+	rsi := data.Indicators["rsi"+"14"]
+	adx := data.Adx["Adx20"].Adx
+	ema21 := data.Indicators["ema"+"15"]
 	var order ORDER
 	order.OrderType = "None"
-	if token != "29135" {
-		return order
-	}
 	high, low := GetDCRange(*data, idx)
 
-	//if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
-	//	return order
-	//}
+	if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
+		return order
+	}
 
-	if true || data.Data[idx].Close > high && ema21[idx] < data.Data[idx].Close {
+	if data.Data[idx].Close > high && ema21[idx] > getVwap(data.Data, 14) {
 		log.Println(" Buy Trade taken on Dc BreakOut:")
 		order = ORDER{
 			Spot:      data.Data[idx].Close + 0.05,
 			Sl:        CalculateDynamicSL(high, low),
 			Tp:        CalculateDynamicTP(high, low),
-			Quantity:  1,
+			Quantity:  CalculatePosition(data.Data[idx].Close+0.05, 5, client),
 			OrderType: "BUY",
 		}
 
-	} else if data.Data[idx].Close < low && ema21[idx] > data.Data[idx].Close {
+	} else if data.Data[idx].Close < low && ema21[idx] < getVwap(data.Data, 14) {
 		log.Println(" SELL Trade taken on DC breakout ")
 		order = ORDER{
 			Spot:      data.Data[idx].Close - 0.05,
 			Sl:        CalculateDynamicSL(high, low),
 			Tp:        CalculateDynamicTP(high, low),
-			Quantity:  1,
+			Quantity:  CalculatePosition(data.Data[idx].Close+0.05, 5, client),
 			OrderType: "SELL",
 		}
 
@@ -308,7 +305,7 @@ func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 		SquareOff:        strconv.Itoa(order.Tp),
 		StopLoss:         float64(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: float64(1),
+		TrailingStopLoss: float64(2),
 	}
 
 	return orderParams
@@ -333,7 +330,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 	squareoff := price + target
 	StopLoss := order.StopLoss
 	trailingStopLoss := price - StopLoss
-	if order.OrderType == "SELL" {
+	if order.TransactionType == "SELL" {
 		trailingStopLoss = price + StopLoss
 		squareoff = price - target
 	}
