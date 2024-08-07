@@ -244,7 +244,7 @@ func GetDCRange(data DataWithIndicators, idx int) (float64, float64) {
 	high := 0.0
 	low := 1000000.0
 
-	for i := idx - 1; i > idx-97; i-- {
+	for i := idx - 1; i > idx-21; i-- {
 		high = math.Max(data.Data[i].High, high)
 		low = math.Min(data.Data[i].Low, low)
 	}
