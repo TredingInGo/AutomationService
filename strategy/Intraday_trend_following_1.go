@@ -168,7 +168,10 @@ func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, 
 	orders, _ := client.GetOrderBook()
 	currentOrder := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
 	for currentOrder.Status != "complete" {
-		currentTick := GetStockTick(client, orderParams.SymbolToken, "FIVE_MINUTE", nfo)
+		currentTick := GetStockTick(client, orderParams.SymbolToken, "FIVE_MINUTE", "NSE")
+		if currentTick == nil || len(currentTick) == 0 {
+			continue
+		}
 		lastTradedPrice := currentTick[len(currentTick)-1].Close
 		if lastTradedPrice > spot+(spot*0.05) {
 			cancleOrderResponce, _ := client.CancelOrder(orderParams.Variety, orderRes.OrderID)
@@ -234,25 +237,27 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartapigo.Client) ORDER {
 	idx := len(data.Data) - 1
-	rsi := data.Indicators["rsi"+"14"]
-	adx := data.Adx["Adx20"].Adx
+	//rsi := data.Indicators["rsi"+"14"]
+	//adx := data.Adx["Adx20"].Adx
 	ema21 := data.Indicators["ema"+"21"]
 	var order ORDER
 	order.OrderType = "None"
-
-	high, low := GetDCRange(*data, idx)
-
-	if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
+	if token != "29135" {
 		return order
 	}
+	high, low := GetDCRange(*data, idx)
 
-	if data.Data[idx].Close > high && ema21[idx] < data.Data[idx].Close {
+	//if high == 0.0 || low == 1000000.0 || rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
+	//	return order
+	//}
+
+	if true || data.Data[idx].Close > high && ema21[idx] < data.Data[idx].Close {
 		log.Println(" Buy Trade taken on Dc BreakOut:")
 		order = ORDER{
 			Spot:      data.Data[idx].Close + 0.05,
 			Sl:        CalculateDynamicSL(high, low),
 			Tp:        CalculateDynamicTP(high, low),
-			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
+			Quantity:  1,
 			OrderType: "BUY",
 		}
 
@@ -262,7 +267,7 @@ func DcForStocks(data *DataWithIndicators, token, symbol string, client *smartap
 			Spot:      data.Data[idx].Close - 0.05,
 			Sl:        CalculateDynamicSL(high, low),
 			Tp:        CalculateDynamicTP(high, low),
-			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
+			Quantity:  1,
 			OrderType: "SELL",
 		}
 
@@ -301,9 +306,9 @@ func GetOrderParams(order *ORDER) smartapigo.OrderParams {
 		Duration:         "DAY",
 		Price:            strconv.FormatFloat(order.Spot, 'f', 2, 64),
 		SquareOff:        strconv.Itoa(order.Tp),
-		StopLoss:         strconv.Itoa(order.Sl),
+		StopLoss:         float64(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: strconv.Itoa(1),
+		TrailingStopLoss: float64(1),
 	}
 
 	return orderParams
@@ -326,7 +331,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 	price, _ := strconv.ParseFloat(order.Price, 64)
 	target, _ := strconv.ParseFloat(order.SquareOff, 64)
 	squareoff := price + target
-	StopLoss, _ := strconv.ParseFloat(order.StopLoss, 64)
+	StopLoss := order.StopLoss
 	trailingStopLoss := price - StopLoss
 	if order.OrderType == "SELL" {
 		trailingStopLoss = price + StopLoss
@@ -353,7 +358,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 			}
 
 		}
-		if (order.OrderType == "BUY" && (LTP <= trailingStopLoss || LTP >= squareoff)) || (order.OrderType == "SELL" && (LTP >= trailingStopLoss || LTP <= squareoff)) {
+		if (order.TransactionType == "BUY" && (LTP <= trailingStopLoss || LTP >= squareoff)) || (order.TransactionType == "SELL" && (LTP >= trailingStopLoss || LTP <= squareoff)) {
 			ltp.STOP()
 			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
 			break
@@ -365,11 +370,6 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 				ModifyOrderWithRetry(modifyOrderParams, client)
 			}
 
-		}
-		if LTP >= trailingStopLoss || LTP <= squareoff {
-			ltp.STOP()
-			log.Println("Ltp stopped trailingStopLoss", trailingStopLoss, " LTP= ", LTP)
-			break
 		}
 	}
 }

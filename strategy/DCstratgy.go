@@ -162,9 +162,9 @@ func getDcOrderParams(order ORDER) smartapigo.OrderParams {
 		Duration:         "DAY",
 		Price:            strconv.FormatFloat(order.Spot, 'f', 2, 64),
 		SquareOff:        strconv.Itoa(order.Tp),
-		StopLoss:         strconv.Itoa(order.Sl),
+		StopLoss:         float64(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: strconv.Itoa(1),
+		TrailingStopLoss: float64(1),
 	}
 
 	return orderParams
@@ -211,10 +211,8 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 	if high == 0.0 || low == 1000000.0 {
 		return order
 	}
-	obvForCall := CalculateOBV(*callData)
-	obvForPut := CalculateOBV(*putData)
 
-	if data.Data[idx-1].Close > high && rsi[idx] > 55 && rsi[idx] < 75 && IsOBVIncreasing(obvForCall) {
+	if data.Data[idx-1].Close > high && rsi[idx] > 55 && rsi[idx] < 75 {
 		log.Println(" CALL Trade taken on Dc BreakOut:")
 		return LegInfo{
 			price:     callData.Data[callIdx].Close + 0.5,
@@ -225,7 +223,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			quantity:  2,
 		}
 
-	} else if data.Data[idx-1].Close < low && rsi[idx] > 30 && rsi[idx] < 40 && IsOBVDecreasing(obvForPut) {
+	} else if data.Data[idx-1].Close < low && rsi[idx] > 30 && rsi[idx] < 40 {
 		log.Println(" PUT Trade taken on DC breakout ")
 		return LegInfo{
 			price:     putData.Data[putIdx].Close + 0.5,
@@ -299,7 +297,7 @@ func (s *strategy) TrackOrdersFoDc(ltp smartStream.SmartStream, client *smartapi
 	price, _ := strconv.ParseFloat(order.Price, 64)
 	target, _ := strconv.ParseFloat(order.SquareOff, 64)
 	squareoff := price + target
-	StopLoss, _ := strconv.ParseFloat(order.StopLoss, 64)
+	StopLoss := order.StopLoss
 	trailingStopLoss := price - StopLoss
 	orderPrice := price
 
@@ -380,5 +378,5 @@ func GetCurrentOrder(orders []smartapigo.Order, orderId string) smartapigo.Order
 			return order
 		}
 	}
-	return orders[0]
+	return smartapigo.Order{}
 }

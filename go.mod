@@ -3,7 +3,7 @@ module github.com/TredingInGo/AutomationService
 go 1.17
 
 require (
-	github.com/TredingInGo/smartapi v0.0.0-20240806040032-68ba9909089f
+	github.com/TredingInGo/smartapi v0.0.0-20240806075819-a29c547f91e1
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.9
 	github.com/pquerna/otp v1.4.0

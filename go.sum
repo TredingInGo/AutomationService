@@ -30,6 +30,12 @@ github.com/TredingInGo/smartapi v0.0.0-20240513185625-fb206c2e9b2b h1:CKqlG5J8Z0
 github.com/TredingInGo/smartapi v0.0.0-20240513185625-fb206c2e9b2b/go.mod h1:TKogjFYbqGRLgxYEngWE8CjYf7nKeKC43J0rcN/4Gto=
 github.com/TredingInGo/smartapi v0.0.0-20240806040032-68ba9909089f h1:blfiLBv9PHGiTajroSbIyeu+hRqkIM7CJRTUMGqZZTM=
 github.com/TredingInGo/smartapi v0.0.0-20240806040032-68ba9909089f/go.mod h1:TKogjFYbqGRLgxYEngWE8CjYf7nKeKC43J0rcN/4Gto=
+github.com/TredingInGo/smartapi v0.0.0-20240806073127-7e72a7f7b95c h1:l5pJ4gMh1AK0LWLlA1AHdlWdE50siutRy9FvaJosXg4=
+github.com/TredingInGo/smartapi v0.0.0-20240806073127-7e72a7f7b95c/go.mod h1:TKogjFYbqGRLgxYEngWE8CjYf7nKeKC43J0rcN/4Gto=
+github.com/TredingInGo/smartapi v0.0.0-20240806074000-99cbc77e135c h1:kdenMM/5TBFafCw1alMj8twLFTTgYTWRBWpqW1JQW7w=
+github.com/TredingInGo/smartapi v0.0.0-20240806074000-99cbc77e135c/go.mod h1:TKogjFYbqGRLgxYEngWE8CjYf7nKeKC43J0rcN/4Gto=
+github.com/TredingInGo/smartapi v0.0.0-20240806075819-a29c547f91e1 h1:9sQcTyiV1OnXAV1o7swTBTiA0vr5OrWuMagPlfoMyM8=
+github.com/TredingInGo/smartapi v0.0.0-20240806075819-a29c547f91e1/go.mod h1:TKogjFYbqGRLgxYEngWE8CjYf7nKeKC43J0rcN/4Gto=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
 github.com/ajstarks/deck/generate v0.0.0-20210309230005-c3f852c02e19/go.mod h1:T13YZdzov6OU0A1+RfKZiZN9ca6VeKdBdyDV+BY97Tk=
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=

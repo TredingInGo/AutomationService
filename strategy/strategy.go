@@ -265,9 +265,9 @@ func getFOOrderParams(order ORDER) smartapigo.OrderParams {
 		Duration:         "DAY",
 		Price:            strconv.FormatFloat(order.Spot, 'f', 2, 64),
 		SquareOff:        strconv.Itoa(order.Tp),
-		StopLoss:         strconv.Itoa(order.Sl),
+		StopLoss:         float64(order.Sl),
 		Quantity:         strconv.Itoa(order.Quantity),
-		TrailingStopLoss: strconv.Itoa(1),
+		TrailingStopLoss: float64(1),
 	}
 
 	return orderParams

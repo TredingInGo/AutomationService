@@ -254,8 +254,8 @@ func getFOOrderParamsForArbitrage(order legInfo) smartapigo.OrderParams {
 		Price:            strconv.FormatFloat(order.price, 'f', 2, 64),
 		Quantity:         strconv.Itoa(order.quantity),
 		SquareOff:        strconv.FormatFloat(0, 'f', 2, 64),
-		TrailingStopLoss: strconv.FormatFloat(0, 'f', 2, 64),
-		StopLoss:         strconv.FormatFloat(0, 'f', 2, 64),
+		TrailingStopLoss: 0,
+		StopLoss:         0,
 	}
 
 	return orderParams
