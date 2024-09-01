@@ -102,7 +102,7 @@ func TrendFollowingRsiForSwing(data *DataWithIndicators, token, symbol, username
 	if adx14.Adx[idx] >= 25 && adx14.PlusDi[idx] > adx14.MinusDi[idx] && sma5 > sma8 && sma8 > sma13 && sma13 > sma21 && rsi[idx] < 70 && rsi[idx] > 60 && rsi[idx-2] < rsi[idx] && rsi[idx-1] < rsi[idx] {
 		order = ORDER{
 			Spot:      data.Data[idx].High + 0.05,
-			Sl:        int(data.Data[idx].High * 0.05),
+			Sl:        (data.Data[idx].High * 0.05),
 			Tp:        int(data.Data[idx].High * 0.10),
 			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
 			OrderType: "BUY",
@@ -170,7 +170,7 @@ func DcScreener(data DataWithIndicators, token, symbol, username string, client 
 	if data.Data[idx].Close > high && IsOBVIncreasing(obv) {
 		order = ORDER{
 			Spot:      data.Data[idx].Close + 0.05,
-			Sl:        int(high - low),
+			Sl:        (high - low),
 			Tp:        int((high - low) * 3),
 			Quantity:  1,
 			OrderType: "BUY",

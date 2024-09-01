@@ -186,7 +186,7 @@ func getDcOrderInfo(index string, order LegInfo) ORDER {
 	log.Printf("\nlot size %v \n", lotSize)
 	orderParam := ORDER{
 		Spot:      order.price,
-		Sl:        sl,
+		Sl:        float64(sl),
 		Tp:        tp,
 		Quantity:  order.quantity * lotSize,
 		OrderType: "BUY",
@@ -202,17 +202,17 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 	idx := len(data.Data) - 1
 	callIdx := len(callData.Data) - 1
 	putIdx := len(putData.Data) - 1
-
+	adx := data.Adx["Adx20"].Adx
 	rsi := data.Indicators["rsi"+"14"]
 	var order LegInfo
 	order.orderType = "None"
 	high, low := GetDCRange(*data, idx)
 
-	if high == 0.0 || low == 1000000.0 {
+	if high == 0.0 || low == 1000000.0 && rsi[idx] > 75 || rsi[idx] < 30 || adx[idx] < 25 {
 		return order
 	}
 
-	if data.Data[idx-1].Close > high && rsi[idx] > 55 && rsi[idx] < 75 {
+	if data.Data[idx-1].Close >= high {
 		log.Println(" CALL Trade taken on Dc BreakOut:")
 		return LegInfo{
 			price:     callData.Data[callIdx].Close + 0.5,
@@ -223,7 +223,7 @@ func DcForFo(data, callData, putData *DataWithIndicators, callToken, putToken, c
 			quantity:  2,
 		}
 
-	} else if data.Data[idx-1].Close < low && rsi[idx] > 30 && rsi[idx] < 40 {
+	} else if data.Data[idx-1].Close <= low {
 		log.Println(" PUT Trade taken on DC breakout ")
 		return LegInfo{
 			price:     putData.Data[putIdx].Close + 0.5,
@@ -245,6 +245,18 @@ func GetDCRange(data DataWithIndicators, idx int) (float64, float64) {
 	low := 1000000.0
 
 	for i := idx - 1; i > idx-21; i-- {
+		high = math.Max(data.Data[i].High, high)
+		low = math.Min(data.Data[i].Low, low)
+	}
+	return high, low
+}
+
+func GetCustomDCRange(data DataWithIndicators, idx int, period int) (float64, float64) {
+
+	high := 0.0
+	low := 1000000.0
+
+	for i := idx - 1; i > idx-period-1; i-- {
 		high = math.Max(data.Data[i].High, high)
 		low = math.Min(data.Data[i].Low, low)
 	}

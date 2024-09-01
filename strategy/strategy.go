@@ -25,8 +25,8 @@ const (
 	nfo              = "NFO"
 	niftyLotSize     = 25
 	bankNiftyLotSize = 15
-	bankExpairy      = "17JUL24"
-	niftyExpairy     = "18JUL24"
+	bankExpairy      = "29AUG24"
+	niftyExpairy     = "28AUG24"
 )
 
 var (
@@ -74,7 +74,7 @@ func New() strategy {
 	}
 }
 func (s *strategy) Algo(ltp smartStream.SmartStream, client *smartapigo.Client) {
-	maxTrade := 3
+	maxTrade := 7
 	for {
 		isClosed := CloseSession(client)
 		if isClosed || maxTrade == 0 {
@@ -289,7 +289,7 @@ func getFOOrderInfo(index string, order LegInfo) ORDER {
 	log.Printf("\nlot size %v \n", lotSize)
 	orderParam := ORDER{
 		Spot:      order.price,
-		Sl:        sl,
+		Sl:        float64(sl),
 		Tp:        tp,
 		Quantity:  order.quantity * lotSize,
 		OrderType: "BUY",
