@@ -136,7 +136,9 @@ func (s *strategy) getEligibleStocks(ltp smartStream.SmartStream, ctx context.Co
 }
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string) *ORDER {
+	time.Sleep(1 * time.Second)
 	data := GetStockTick(client, stockToken, "FIVE_MINUTE", nse)
+	fmt.Println("Data length: ", len(data))
 	if len(data) == 0 {
 		return nil
 	}
@@ -152,7 +154,6 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
-
 	return &order
 }
 
@@ -164,6 +165,7 @@ func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, 
 		return false
 	}
 	log.Printf("\n order res %v", orderRes)
+	time.Sleep(1 * time.Second)
 	orders, _ := client.GetOrderBook()
 	currentOrder := GetOrderDetailsByOrderId(orderRes.OrderID, orders)
 	for currentOrder.Status != "complete" {
@@ -182,13 +184,14 @@ func (s *strategy) PlaceOrder(ltp smartStream.SmartStream, ctx context.Context, 
 			fmt.Println("Order Cancelled", cancleOrderResponce)
 			return false
 		}
+		time.Sleep(1 * time.Second)
 		orders, _ = client.GetOrderBook()
 		currentOrder = GetCurrentOrder(orders, orderRes.OrderID)
-		time.Sleep(20 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 
 	log.Printf("order response %v for %v", orderRes, userName)
-	s.TrackOrders(ltp, ctx, client, symbol, currentOrder.OrderID, orderParams)
+	//s.TrackOrders(ltp, ctx, client, symbol, currentOrder.OrderID, orderParams)
 	for IsEquityPostionOpen(client) {
 		time.Sleep(5 * time.Second)
 	}
@@ -240,7 +243,7 @@ func (s *strategy) TrackOrders(ltp smartStream.SmartStream, ctx context.Context,
 		squareoff = price - target
 	}
 	orderPrice := price
-
+	time.Sleep(1 * time.Second)
 	ordersList, _ := client.GetOrderBook()
 	if ordersList == nil {
 		return

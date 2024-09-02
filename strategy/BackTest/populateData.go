@@ -11,7 +11,7 @@ import (
 func populateStockData(stockList []strategy.Symbols, client *smartapigo.Client) {
 	count := 1
 	for _, stock := range stockList {
-		populateStockTick(client, stock.Symbol, "FIVE_MINUTE")
+		populateStockTick(client, stock.Symbol, "TEN_MINUTE")
 		dataWithIndicators := strategy.DataWithIndicators{
 			Data:     stockData[stock.Symbol],
 			Token:    stock.Symbol,

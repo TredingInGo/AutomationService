@@ -48,7 +48,7 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 	maxProfit := initTrade()
 	Dc := 0
 
-	for i := 20; i < 101; i++ {
+	for i := 20; i <= 20; i++ {
 		Amount = 1000000
 		tradeReport = initTrade()
 		executeBacktest(client, stockList, i, false)

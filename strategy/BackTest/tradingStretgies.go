@@ -5,6 +5,7 @@ import (
 	smartapigo "github.com/TredingInGo/smartapi"
 	"log"
 	"strconv"
+	"time"
 )
 
 func Execute(symbol, stockToken string, client *smartapigo.Client, userName string, idx *int, dcPeriod int, isEma bool) strategy.ORDER {
@@ -12,43 +13,45 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	order.OrderType = "None"
 	order.Symbol = symbol
 	order.Token = stockToken
-	if len(dataWithIndicatorsMap[stockToken].Data) == 0 || len(dataWithIndicatorsMap[stockToken].Data) <= *idx {
+	data := dataWithIndicatorsMap[stockToken]
+	currentTime := data.Data[*idx].Timestamp
+	compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 14, 00, 0, 0, currentTime.Location())
+	if len(dataWithIndicatorsMap[stockToken].Data) == 0 || len(dataWithIndicatorsMap[stockToken].Data) <= *idx || currentTime.After(compareTime) {
 		return order
 	}
-	high, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx, 7)
-	data := dataWithIndicatorsMap[stockToken]
+	_, low := GetORBRange(dataWithIndicatorsMap[stockToken], idx, 14)
 
 	ma5 := data.Indicators["sma"+"5"][*idx]
 	ma8 := data.Indicators["sma"+"8"][*idx]
 	ma13 := data.Indicators["sma"+"13"][*idx]
 	ma21 := data.Indicators["sma"+"21"][*idx]
-	ema21 := data.Indicators["ema"+"21"][*idx]
-	rsi := data.Indicators["rsi"+"14"]
-	adx14 := data.Adx["Adx"+"14"]
+	ema8 := data.Indicators["ema"+"14"][*idx]
+	rsi := data.Indicators["rsi"+"20"]
+	adx14 := data.Adx["Adx"+"20"]
 	rsiAvg3 := getAvg(rsi, 3)
 	rsiavg8 := getAvg(rsi, 8)
 
-	if rsi[*idx] > 85 && rsi[*idx] < 25 && adx14.Adx[*idx] <= 25 {
+	if rsi[*idx] > 85 && rsi[*idx] < 25 && adx14.Adx[*idx] <= 35 {
 		return order
 	}
 
+	obv := strategy.CalculateOBV(data)
 	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
-	if data.Data[*idx-1].Close > high && data.Data[*idx-1].Low > ema21 && data.Data[*idx].Close > strategy.GetVwap(data.Data, 14) && adx14.PlusDi[*idx] > adx14.MinusDi[*idx] && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsiAvg3 > rsiavg8 {
+	//if strategy.IsOBVIncreasing(obv) && data.Data[*idx].Low > ema8 && data.Data[*idx-1].Close >= high && data.Data[*idx].Close > strategy.GetVwap(data.Data, 14) && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsiAvg3 > rsiavg8 && rsi[*idx] > 65 {
+	//	order = strategy.ORDER{
+	//		Spot:      data.Data[*idx].Close + 0.05,
+	//		Sl:        data.Data[*idx].Close * 0.01,
+	//		Tp:        int(data.Data[*idx].High * 0.02),
+	//		Quantity:  20,
+	//		OrderType: "BUY",
+	//	}
+	if strategy.IsOBVDecreasing(obv) && data.Data[*idx].Low < ema8 && data.Data[*idx-1].Close <= low && data.Data[*idx].Close < strategy.GetVwap(data.Data, 14) && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsiAvg3 < rsiavg8 && rsi[*idx] < 50 {
 		order = strategy.ORDER{
-			Spot:      data.Data[*idx].High + 0.05,
-			Sl:        (data.Data[*idx].High * 0.01),
-			Tp:        int(data.Data[*idx].High * 0.02),
-			Quantity:  20,
-			OrderType: "BUY",
-		}
-
-	} else if data.Data[*idx-1].Close <= low && data.Data[*idx-1].High < ema21 && data.Data[*idx].Close < strategy.GetVwap(data.Data, 14) && adx14.PlusDi[*idx] < adx14.MinusDi[*idx] && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsiAvg3 < rsiavg8 {
-		order = strategy.ORDER{
-			Spot:      data.Data[*idx].Low - 0.05,
-			Sl:        (data.Data[*idx].Low * 0.01),
-			Tp:        int(data.Data[*idx].Low * 0.02),
-			Quantity:  20,
+			Spot:      data.Data[*idx].Close - 0.05,
+			Sl:        data.Data[*idx].Close * 0.01,
+			Tp:        int(data.Data[*idx].Low * 0.03),
+			Quantity:  200,
 			OrderType: "SELL",
 		}
 
