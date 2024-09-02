@@ -38,7 +38,7 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 
 	stock := strategy.LoadStockList(db)
 	var stockList []strategy.Symbols
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		stockList = append(stockList, stock[i])
 
 	}
