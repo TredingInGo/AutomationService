@@ -17,7 +17,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	adx14 := data.Adx["Adx"+"20"]
 	rsiAvg3 := getAvg(rsi, 3)
 	rsiavg8 := getAvg(rsi, 8)
-	_, low := GetCustomDCRange(*data, idx, 14)
+	high, low := GetCustomDCRange(*data, idx, 14)
 	currentTime := data.Data[idx].Timestamp
 	compareTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 14, 00, 0, 0, currentTime.Location())
 	var order ORDER
@@ -31,7 +31,7 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 	}
 
 	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
-	//log.Printf("currentTime:%v, currentData:%v, adx = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v ", time.Now(), data.Data[idx], adx14.Adx[idx], sma5, sma8, sma13, sma21, rsi[idx], username)
+	log.Printf("currentTime:%v, currentData:%v, adx = %v, high = %v, low = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v \n", time.Now(), data.Data[idx], adx14.Adx[idx], high, low, ma5, ma8, ma13, ma21, rsi[idx], username)
 	//if data.Data[idx-1].Close > high && data.Data[idx-1].Low > ema21 && data.Data[idx].Close > GetVwap(data.Data, 14) && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsiAvg3 > rsiavg8 {
 	//	order = ORDER{
 	//		Spot:      data.Data[idx].High + 0.05,
