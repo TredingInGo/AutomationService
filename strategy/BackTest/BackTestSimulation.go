@@ -8,6 +8,7 @@ import (
 func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, orderType string) float64 {
 	//trailingStopLoss := sl
 	//isOrderTriggered := false
+	*idx++
 	for *idx < len(data)-1 {
 
 		currentTime := data[*idx].Timestamp
@@ -24,9 +25,11 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 			if data[*idx].Close >= tp {
 				return tp - spot
 			}
+
 			if data[*idx].Close <= sl {
 				return sl - spot
 			}
+
 			if spot+5 < data[*idx].Close {
 				//trailingStopLoss += 5
 				//spot += 5
@@ -35,12 +38,13 @@ func simulate(spot, sl, tp float64, data []smartapigo.CandleResponse, idx *int, 
 		}
 
 		if orderType == "SELL" {
-			if data[*idx].Close >= sl {
-				return spot - sl
-			}
 			if data[*idx].Close <= tp {
 				return spot - tp
 			}
+			if data[*idx].Close >= sl {
+				return spot - sl
+			}
+
 			if spot-5 > data[*idx].Close {
 				//trailingStopLoss -= 5
 				//spot -= 5

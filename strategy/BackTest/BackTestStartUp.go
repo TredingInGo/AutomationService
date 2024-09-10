@@ -2,7 +2,6 @@ package BackTest
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/TredingInGo/AutomationService/strategy"
 	smartapigo "github.com/TredingInGo/smartapi"
 	"log"
@@ -15,7 +14,7 @@ const (
 )
 
 var stockData = make(map[string][]smartapigo.CandleResponse)
-var Amount = 100000.0
+var Amount = 1000000.0
 
 type kpi struct {
 	trade            int
@@ -36,10 +35,9 @@ var trades []int
 
 func BackTest(client *smartapigo.Client, db *sql.DB) {
 
-	stock := strategy.LoadStockList(db)
 	var stockList []strategy.Symbols
-	for i := 0; i < 20; i++ {
-		stockList = append(stockList, stock[i])
+	for i := 0; i < 1; i++ {
+		stockList = append(stockList, strategy.Symbols{"99926009", "BANKNIFTY"})
 
 	}
 	populateStockData(stockList, client)
@@ -52,8 +50,8 @@ func BackTest(client *smartapigo.Client, db *sql.DB) {
 		Amount = 1000000
 		tradeReport = initTrade()
 		executeBacktest(client, stockList, i, false)
-		fmt.Println("Current Dc = ", i)
-		printCurrentTradeReport()
+		//fmt.Println("Current Dc = ", i)
+		//printCurrentTradeReport()
 		if tradeReport.profit > maxProfit.profit {
 			maxProfit = tradeReport
 			Dc = i
@@ -102,7 +100,7 @@ func getEligibleStocks(stocks []strategy.Symbols, client *smartapigo.Client, use
 			Symbols:  strategy.Symbols{Symbol: stock.Symbol, Token: stock.Token},
 			UserName: userName,
 		}
-		order := Execute(param.Token, param.Symbol, client, param.UserName, idx, rsiPeriod, isEma)
+		order := ExecuteForIndex(param.Token, param.Symbol, client, param.UserName, idx, rsiPeriod, isEma)
 		if order.OrderType != "None" {
 			PlaceOrder(order, order.Token, idx)
 		}
@@ -126,6 +124,7 @@ func PlaceOrder(order strategy.ORDER, symbol string, idx *int) {
 	Amount += netPL
 
 	if netPL > 0 {
+		log.Println("Profit ")
 		tradeReport.trade++
 		tradeReport.profit += netPL
 		tradeReport.profitCount++
@@ -134,6 +133,7 @@ func PlaceOrder(order strategy.ORDER, symbol string, idx *int) {
 
 	}
 	if netPL < 0 {
+		log.Println("Loss")
 		tradeReport.trade++
 		tradeReport.loss += netPL
 		tradeReport.lossCount++

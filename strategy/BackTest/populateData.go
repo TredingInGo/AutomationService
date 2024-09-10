@@ -30,13 +30,13 @@ func populateStockTick(client *smartapigo.Client, symbolToken string, timeFrame 
 
 	tempTime := time.Now()
 	var candles []smartapigo.CandleResponse
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		toDate := tempTime.Format("2006-01-02 15:04")
 		fromDate := tempTime.Add(time.Hour * 24 * -60).Format("2006-01-02 15:04")
 		tempTime = tempTime.Add(time.Hour * 24 * -60)
 
 		// set timeout
-		client.SetTimeout(5 * time.Second)
+		client.SetTimeout(1 * time.Second)
 
 		tempHistoryData, _ := client.GetCandleData(smartapigo.CandleParams{
 			Exchange:    "NSE",

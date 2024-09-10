@@ -32,17 +32,16 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 	//log.Printf("\nStock Name: %v UserName %v\n", symbol, username)
 	log.Printf("currentTime:%v, currentData:%v, adx = %v, high = %v, low = %v, sma5 = %v, sma8 = %v, sma13 = %v, sma21 = %v, rsi = %v,  name = %v \n", time.Now(), data.Data[idx], adx14.Adx[idx], high, low, ma5, ma8, ma13, ma21, rsi[idx], username)
-	//if data.Data[idx-1].Close > high && data.Data[idx-1].Low > ema21 && data.Data[idx].Close > GetVwap(data.Data, 14) && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsiAvg3 > rsiavg8 {
-	//	order = ORDER{
-	//		Spot:      data.Data[idx].High + 0.05,
-	//		Sl:        (data.Data[idx].High * 0.01),
-	//		Tp:        int(data.Data[idx].High * 0.02),
-	//		Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
-	//		OrderType: "BUY",
-	//	}
-	//
-	//} else
-	if IsOBVDecreasing(obv) && data.Data[idx].Low < ema21 && data.Data[idx-1].Close <= low && data.Data[idx].Close < GetVwap(data.Data, 14) && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsiAvg3 < rsiavg8 && rsi[idx] < 50 {
+	if data.Data[idx].Close > high && data.Data[idx-1].Low > ema21 && data.Data[idx].Close > GetVwap(data.Data, 14) && adx14.PlusDi[idx] > adx14.MinusDi[idx] && ma5 > ma8 && ma8 > ma13 && ma21 < ma13 && rsiAvg3 > rsiavg8 {
+		order = ORDER{
+			Spot:      data.Data[idx].High + 0.05,
+			Sl:        (data.Data[idx].High * 0.01),
+			Tp:        int(data.Data[idx].High * 0.025),
+			Quantity:  CalculatePosition(data.Data[idx].High, data.Data[idx].High-data.Data[idx].High*0.01, client),
+			OrderType: "BUY",
+		}
+
+	} else if IsOBVDecreasing(obv) && data.Data[idx].Low < ema21 && data.Data[idx].Close <= low && data.Data[idx].Close < GetVwap(data.Data, 14) && ma5 < ma8 && ma8 < ma13 && ma21 > ma13 && rsiAvg3 < rsiavg8 && rsi[idx] < 50 {
 		order = ORDER{
 			Spot:      data.Data[idx].Low - 0.05,
 			Sl:        (data.Data[idx].Low * 0.01),
