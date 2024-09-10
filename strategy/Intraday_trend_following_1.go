@@ -79,7 +79,11 @@ func (s *strategy) TrendFollowingStretgy(ltp smartStream.SmartStream, ctx contex
 	for {
 		for _, stock := range stockList {
 			CloseSession(client)
-			Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
+			order := Execute(stock.Token, stock.Symbol, client, userProfile.UserName)
+			if order != nil {
+				orderParams := GetOrderParams(order)
+				s.PlaceOrder(ltp, ctx, client, orderParams, userProfile.UserName, order.Symbol, order.Spot)
+			}
 		}
 		if IsEquityPostionOpen(client) {
 			continue
@@ -97,7 +101,7 @@ func (s *strategy) TrendFollowingStretgy(ltp smartStream.SmartStream, ctx contex
 		default:
 		}
 
-		s.getEligibleStocks(ltp, ctx, stockList, client, userProfile.UserName)
+		//s.getEligibleStocks(ltp, ctx, stockList, client, userProfile.UserName)
 
 	}
 }
@@ -154,6 +158,7 @@ func Execute(symbol, stockToken string, client *smartapigo.Client, userName stri
 	if order.OrderType == "None" || order.Quantity < 1 {
 		return nil
 	}
+
 	return &order
 }
 

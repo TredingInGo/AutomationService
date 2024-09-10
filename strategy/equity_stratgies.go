@@ -52,6 +52,8 @@ func TrendFollowingRsi(data *DataWithIndicators, token, symbol, username string,
 
 	}
 	order.Score = CaluclateScore(data, order)
+	order.Symbol = symbol
+	order.Token = token
 	return order
 }
 
