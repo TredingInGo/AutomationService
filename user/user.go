@@ -14,11 +14,16 @@ type activeUsers struct {
 }
 
 type UserInfo struct {
-	ApiClient         *smartapi.Client
-	Session           smartapi.UserSession
-	CancelFunc        context.CancelFunc
-	Ctx               context.Context
-	IsIntraDayRunning bool
+	ApiClient            *smartapi.Client
+	Session              smartapi.UserSession
+	CancelFunc           context.CancelFunc
+	Ctx                  context.Context
+	IsIntraDayRunning    bool
+	AliceBlueClientID    string
+	AliceBlueSessionCode string
+	UserId               string
+	Name                 string
+	AliceBlueBearerToken string
 }
 
 type Users interface {
@@ -46,10 +51,6 @@ func (au *activeUsers) Get(clientID string) (*UserInfo, bool) {
 }
 
 func (au *activeUsers) Set(clientID string, user *UserInfo) bool {
-	_, exists := au.Get(clientID)
-	if exists {
-		return false
-	}
 
 	au.mu.Lock()
 	defer au.mu.Unlock()

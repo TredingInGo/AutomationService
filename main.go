@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"github.com/TredingInGo/AutomationService/Simulation"
+	"github.com/TredingInGo/AutomationService/alice-blue/token"
+	"github.com/TredingInGo/AutomationService/database"
 	"github.com/TredingInGo/AutomationService/historyData"
+	alice_auth "github.com/TredingInGo/AutomationService/http/alice-auth"
 	intra_day "github.com/TredingInGo/AutomationService/http/intra-day"
 	"github.com/TredingInGo/AutomationService/http/session"
 	"github.com/TredingInGo/AutomationService/http/start"
 	"github.com/TredingInGo/AutomationService/http/stop"
+	handler "github.com/TredingInGo/AutomationService/http/user"
 	"github.com/TredingInGo/AutomationService/smartStream"
 	"github.com/TredingInGo/AutomationService/strategy"
 	"github.com/TredingInGo/AutomationService/strategy/BackTest"
@@ -25,11 +30,8 @@ import (
 )
 
 var (
-
-	//apiClient                            *smartapi.Client
-	//session                              smartapi.UserSession
-	//err                                  error
 	userSessions = make(map[string]*clientSession)
+	db           = sql.DB{}
 )
 
 type clientSession struct {
@@ -55,16 +57,24 @@ func main() {
 	defer func() {
 		recover()
 	}()
-
+	//Load Tokens
 	strategy.PopuletInstrumentsList()
-	r := mux.NewRouter()
+	tokenErr := token.LoadAllTokens()
+	if tokenErr != nil {
+		log.Println("ALL token loaded for alice blue")
+	}
 
+	r := mux.NewRouter()
+	db := database.Connect()
 	activeUsers := user.New()
 	startHandler := start.New(activeUsers)
 	sessionHandler := session.New(activeUsers)
 	intraDayHandler := intra_day.New(activeUsers)
 	stopHandler := stop.New(activeUsers)
+	authHandler := handler.NewAuthHandler(db)
 
+	r.HandleFunc("/login", authHandler.Login).Methods(http.MethodPost)
+	r.HandleFunc("/alice-session", alice_auth.AliceBlueSessionHandler).Methods(http.MethodPost)
 	r.HandleFunc("/start", startHandler.Start).Methods(http.MethodPost)
 	r.HandleFunc("/stop", stopHandler.Stop).Methods(http.MethodPost)
 	r.HandleFunc("/session", sessionHandler.Session).Methods(http.MethodPost)
